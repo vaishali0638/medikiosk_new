@@ -2,10 +2,10 @@ import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common
 import { ConfigModule } from '@nestjs/config';
 import { AuditRepository } from './audit/audit.repository';
 import { CorrelationIdMiddleware } from './common/correlation-id.middleware';
-import { ConsentRepository } from './consent/consent.repository';
 import { QrNonceRepository } from './arrival/qr-nonce.repository';
 import { TokenRequestRepository } from './arrival/token-request.repository';
 import { DbModule } from './db/db.module';
+import { ConsentModule } from './consent/consent.module';
 import { KioskModule } from './kiosk/kiosk.module';
 import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
@@ -21,11 +21,11 @@ import { HealthModule } from './health/health.module';
     DbModule,
     HealthModule,
     KioskModule,
+    ConsentModule,
   ],
-  // Phase 2 exposes the repositories only; the controllers that use them arrive with
-  // their own phases (consent in 4, arrival in 6, tokens in 7).
-  providers: [AuditRepository, ConsentRepository, QrNonceRepository, TokenRequestRepository],
-  exports: [AuditRepository, ConsentRepository, QrNonceRepository, TokenRequestRepository],
+  // Arrival repositories still live here; their controllers arrive in Phases 6 and 7.
+  providers: [AuditRepository, QrNonceRepository, TokenRequestRepository],
+  exports: [AuditRepository, QrNonceRepository, TokenRequestRepository],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

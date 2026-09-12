@@ -8,6 +8,8 @@
  *
  * Refuses to run against production. Idempotent, so re-seeding is safe.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Pool } from 'pg';
 import { Kysely, PostgresDialect } from 'kysely';
 import type { Database } from '../src/db/database.types';
@@ -90,31 +92,46 @@ async function main(): Promise<void> {
           .execute();
       }
 
-      // A placeholder consent notice so the consent flow has a version to reference.
-      // Real notice text is authored and approved through the governance console.
-      await trx
-        .insertInto('governance_version')
-        .values({
-          hospital_id: hospital.id,
-          content_kind: 'TERMINOLOGY',
-          content_key: 'consent-notice',
-          semver: '1.0.0',
-          state: 'PUBLISHED',
-          payload: JSON.stringify({
-            noticeVersion: 'v1.0',
-            note: 'Placeholder. Requires hospital legal and clinical approval before pilot use.',
-          }),
-          author_actor_id: 'SEED',
-          effective_from: new Date(),
-        })
-        .onConflict((oc) =>
-          oc.columns(['hospital_id', 'content_kind', 'content_key', 'semver']).doNothing(),
-        )
-        .execute();
+      // Consent notices, published per language.
+      //
+      // The wording is an explicit placeholder that says so in its own first line. It
+      // exists so the consent flow has a real governed version to reference end to end;
+      // it must be replaced through the governance console, with named clinical and legal
+      // approval, before any real patient is asked to agree to it. The seeded approval is
+      // recorded as SEED-PLACEHOLDER precisely so it cannot be mistaken for a sign-off.
+      for (const language of ['en', 'hi']) {
+        const payload: unknown = JSON.parse(
+          readFileSync(
+            resolve(__dirname, `../../../infra/seed-content/consent-notice.${language}.json`),
+            'utf8',
+          ),
+        );
+
+        await trx
+          .insertInto('governance_version')
+          .values({
+            hospital_id: hospital.id,
+            content_kind: 'CONSENT_NOTICE',
+            content_key: `consent-notice/${language}`,
+            semver: '1.0.0',
+            state: 'PUBLISHED',
+            payload: JSON.stringify(payload),
+            author_actor_id: 'SEED',
+            approvals: JSON.stringify([
+              { by: 'SEED-PLACEHOLDER', role: 'NOT_A_REAL_APPROVAL', at: new Date().toISOString() },
+            ]),
+            effective_from: new Date(),
+          })
+          .onConflict((oc) =>
+            oc.columns(['hospital_id', 'content_kind', 'content_key', 'semver']).doNothing(),
+          )
+          .execute();
+      }
     });
 
     process.stdout.write(
-      `seeded ${HOSPITAL_CODE}: 1 branch, 3 departments, 3 languages, 3 kiosks\n`,
+      `seeded ${HOSPITAL_CODE}: 1 branch, 3 departments, 3 languages, 3 kiosks, ` +
+        '2 placeholder consent notices\n',
     );
   } finally {
     await db.destroy();

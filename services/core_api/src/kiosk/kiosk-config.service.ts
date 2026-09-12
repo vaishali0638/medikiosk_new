@@ -4,6 +4,7 @@ import type { AyushSystem, KioskConfigResponse } from '@medikiosk/api-contracts'
 import { DB } from '../db/db.module';
 import type { Db } from '../db/db.provider';
 import type { Env } from '../config/env';
+import { ConsentNoticeService } from '../consent/consent-notice.service';
 import type { KioskContext } from './kiosk-device.guard';
 
 /** Fallback session timings if the hospital has not overridden them. Seconds. */
@@ -15,6 +16,7 @@ export class KioskConfigService {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly config: ConfigService<Env, true>,
+    private readonly notices: ConsentNoticeService,
   ) {}
 
   /**
@@ -22,9 +24,10 @@ export class KioskConfigService {
    *
    * Everything a patient can be offered is filtered here rather than in the client:
    *
-   * - Only clinically reviewed languages are returned. An unreviewed translation is
-   *   configured but withheld, because unapproved wording must never be shown as
-   *   clinical content.
+   * - A language is offered only if it is BOTH clinically reviewed AND has a published
+   *   consent notice. Reviewed labels with no notice would walk a patient to the consent
+   *   screen and strand them, since there is deliberately no cross-language fallback for
+   *   the wording someone is asked to agree to.
    * - Only enabled departments are returned, and the AYUSH list is derived from them,
    *   so a system the hospital has not configured cannot appear.
    * - Feature flags come from the server. A disabled feature must not render at all,
@@ -59,13 +62,8 @@ export class KioskConfigService {
       .orderBy('name', 'asc')
       .execute();
 
-    const consentNotice = await this.db
-      .selectFrom('governance_version')
-      .select(['semver', 'payload'])
-      .where('hospital_id', '=', hospital.id)
-      .where('content_key', '=', 'consent-notice')
-      .where('state', '=', 'PUBLISHED')
-      .executeTakeFirst();
+    const noticeLanguages = new Set(await this.notices.publishedLanguages(hospital.id));
+    const offerable = languageRows.filter((row) => noticeLanguages.has(row.language_tag));
 
     const ayushSystems = [
       ...new Set(
@@ -78,7 +76,7 @@ export class KioskConfigService {
       hospitalName: hospital.name,
       branchId: branch.code,
       kioskId: kiosk.deviceCode,
-      languages: languageRows.map((row) => ({
+      languages: offerable.map((row) => ({
         tag: row.language_tag,
         label: row.label,
         clinicallyReviewed: row.clinically_reviewed,
@@ -105,10 +103,10 @@ export class KioskConfigService {
         // mistaken for approved clinical content.
         questionnaire: '0.0.0',
         translations: '0.0.0',
-        consentNotice: consentNotice
-          ? ((consentNotice.payload as { noticeVersion?: string }).noticeVersion ??
-            consentNotice.semver)
-          : 'UNPUBLISHED',
+        // Notices are versioned per language, so the config reports which languages have
+        // one rather than a single version that could not describe all of them.
+        consentNotice:
+          offerable.length > 0 ? offerable.map((r) => r.language_tag).join(',') : 'UNPUBLISHED',
       },
       session: {
         inactivityWarningSeconds: DEFAULT_INACTIVITY_WARNING_SECONDS,

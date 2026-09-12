@@ -33,7 +33,8 @@ packages/design_tokens        Canonical theme (generates Dart + CSS)
 packages/questionnaire_schema Versioned questionnaire schema
 packages/terminology          Provenance labels and value sets
 infra/docker           Local development stack
-infra/migrations       PostgreSQL migrations (6 files, 21 tables)
+infra/migrations       PostgreSQL migrations (7 files, 21 tables)
+infra/seed-content     Placeholder governed content (consent notices)
 tools                  Repository guards (forbidden-option scan)
 docs                   Architecture, API, security, runbooks
 tests                  Contract, integration and end-to-end journeys

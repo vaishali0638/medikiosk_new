@@ -11,7 +11,13 @@ import {
 import type { Database } from '../src/db/database.types';
 import { AppModule } from '../src/app.module';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter';
-import { createTestDb, seedFixture, truncateAll, type Fixture } from './db-fixture';
+import {
+  createTestDb,
+  publishConsentNotice,
+  seedFixture,
+  truncateAll,
+  type Fixture,
+} from './db-fixture';
 
 describe('kiosk API (integration)', () => {
   let app: INestApplication;
@@ -43,8 +49,8 @@ describe('kiosk API (integration)', () => {
   beforeEach(async () => {
     await truncateAll(db);
     fx = await seedFixture(db);
-    // The fixture seeds only English; add a reviewed and an unreviewed language so the
-    // clinical-review gate is actually exercised.
+    // The fixture seeds English with a published notice. Add Hindi (reviewed, notice
+    // published) and Tamil (configured but unreviewed) so both gates are exercised.
     await db
       .insertInto('hospital_language')
       .values([
@@ -64,6 +70,7 @@ describe('kiosk API (integration)', () => {
         },
       ])
       .execute();
+    await publishConsentNotice(db, fx.hospitalId, 'hi');
   });
 
   describe('device identification', () => {
@@ -111,7 +118,7 @@ describe('kiosk API (integration)', () => {
       const res = await http().get('/v1/kiosk/config').set(headers()).expect(200);
       const tags = res.body.languages.map((l: { tag: string }) => l.tag).sort();
       // Tamil is configured but unreviewed, so it must not be offered.
-      expect(tags).toEqual(['hi']);
+      expect(tags).toEqual(['en', 'hi']);
     });
 
     it('offers only enabled departments', async () => {
@@ -152,11 +159,20 @@ describe('kiosk API (integration)', () => {
       expect(res.body.features.abha).toBe(false);
     });
 
-    it('reports an unpublished consent notice honestly', async () => {
+    it('reports which languages have a published consent notice', async () => {
       const res = await http().get('/v1/kiosk/config').set(headers()).expect(200);
-      expect(res.body.contentVersions.consentNotice).toBe('UNPUBLISHED');
+      expect(res.body.contentVersions.consentNotice).toBe('en,hi');
       // 0.0.0 is not a publishable version, so it cannot be mistaken for approved content.
       expect(res.body.contentVersions.questionnaire).toBe('0.0.0');
+    });
+
+    it('offers no language at all when no consent notice is published', async () => {
+      await db.deleteFrom('governance_version').execute();
+      const res = await http().get('/v1/kiosk/config').set(headers()).expect(200);
+      // Reviewed labels with no notice would walk a patient to the consent screen and
+      // strand them, since there is no cross-language fallback for consent wording.
+      expect(res.body.languages).toEqual([]);
+      expect(res.body.contentVersions.consentNotice).toBe('UNPUBLISHED');
     });
 
     it('returns session timings so a hospital can tune them without a new build', async () => {

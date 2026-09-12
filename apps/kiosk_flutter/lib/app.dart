@@ -5,9 +5,12 @@ import 'package:flutter/services.dart';
 
 import 'api/api_client.dart';
 import 'api/api_exception.dart';
+import 'config/consent_notice.dart';
 import 'config/kiosk_config.dart';
 import 'l10n/kiosk_strings.dart';
+import 'platform/audio_guidance.dart';
 import 'platform/kiosk_lock.dart';
+import 'screens/consent_screen.dart';
 import 'screens/dialogs.dart';
 import 'screens/home_screen.dart';
 import 'screens/language_screen.dart';
@@ -19,7 +22,18 @@ import 'theme/accessibility_settings.dart';
 import 'theme/mk_theme.dart';
 
 /// What the shell is currently showing.
-enum ShellView { startup, home, language, expired, error, offline }
+enum ShellView {
+  startup,
+  home,
+  language,
+  consent,
+  consentFullNotice,
+  consentDeclined,
+  consentUnavailable,
+  expired,
+  error,
+  offline,
+}
 
 /// The kiosk shell: boot, lock-down, navigation, inactivity and session termination.
 ///
@@ -30,12 +44,14 @@ class KioskApp extends StatefulWidget {
   const KioskApp({
     required this.api,
     required this.kioskLock,
+    required this.audio,
     required this.wipeBuilder,
     super.key,
   });
 
   final ApiClient api;
   final KioskLock kioskLock;
+  final AudioGuidance audio;
 
   /// Builds the wipe once the shell can supply its UI-state clearers.
   final SecureWipe Function(List<VoidCallback> uiStateClearers) wipeBuilder;
@@ -55,6 +71,9 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   String? _lastCorrelationId;
   String? _unavailableReason;
   bool _timeoutDialogOpen = false;
+  ConsentNotice? _notice;
+  bool _speaking = false;
+  bool _audioUnavailable = false;
 
   KioskStrings get _strings => KioskStrings.of(_languageTag);
 
@@ -126,6 +145,12 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _pendingLanguageTag = null;
     _languageTag = 'en';
     _a11y = const AccessibilitySettings();
+    _notice = null;
+    _speaking = false;
+    _audioUnavailable = false;
+    // Audio must not carry from one patient into the next. Fire-and-forget: the wipe
+    // reports on what it can verify, and a stuck TTS engine must not block it.
+    unawaited(widget.audio.stop());
   }
 
   void _onSessionChanged() {
@@ -180,7 +205,87 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
       await sessions.selectLanguage(tag);
       if (!mounted) return;
       setState(() => _languageTag = tag);
-      // Phase 4 continues into the consent flow. Until then the shell returns home,
+      await _loadConsentNotice(tag);
+    } on ApiException catch (error) {
+      _handleApiFailure(error);
+    }
+  }
+
+  /// Fetches the published notice for the chosen language.
+  ///
+  /// There is no cross-language fallback. If nothing is published in this language the
+  /// kiosk stops, because asking a patient to agree to wording they cannot read is not
+  /// consent.
+  Future<void> _loadConsentNotice(String language) async {
+    try {
+      final Map<String, dynamic> json =
+          await widget.api.get('/v1/consents/notice?language=$language');
+      if (!mounted) return;
+      setState(() {
+        _notice = ConsentNotice.fromJson(json);
+        _audioUnavailable = false;
+        _view = ShellView.consent;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.isNetworkFailure) {
+        _handleApiFailure(error);
+        return;
+      }
+      setState(() => _view = ShellView.consentUnavailable);
+    }
+  }
+
+  /// Reads the notice aloud, or says plainly that it cannot.
+  Future<void> _toggleListen() async {
+    final ConsentNotice? notice = _notice;
+    if (notice == null) return;
+
+    if (_speaking) {
+      await widget.audio.stop();
+      if (mounted) setState(() => _speaking = false);
+      return;
+    }
+
+    setState(() => _speaking = true);
+    final SpeechResult result = await widget.audio.speak(
+      text: '${notice.title}. ${notice.collectedItems.join('. ')}. ${notice.purpose}',
+      languageTag: notice.language,
+      approvedRecordingAvailable: notice.audioAvailable,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _speaking = result.spoke;
+      // A patient relying on audio needs to be told it is unavailable, not left waiting
+      // for a button that silently does nothing.
+      _audioUnavailable = !result.spoke;
+    });
+  }
+
+  Future<void> _recordConsent(String decision) async {
+    final SessionManager? sessions = _sessions;
+    final ConsentNotice? notice = _notice;
+    if (sessions == null || notice == null) return;
+
+    await widget.audio.stop();
+    if (mounted) setState(() => _speaking = false);
+
+    try {
+      await widget.api.post(
+        '/v1/consents?sessionId=${sessions.sessionId}',
+        <String, dynamic>{'language': notice.language, 'decision': decision},
+      );
+      if (!mounted) return;
+
+      if (decision == 'DECLINED') {
+        // The server has already ended the session. The artefact survives; the screen
+        // states the consequence and offers Exit only.
+        setState(() => _view = ShellView.consentDeclined);
+        return;
+      }
+
+      // Phase 5 continues into identity. Until then the shell completes the session
       // rather than pretending there is a next step.
       await _endSession(SessionEndReason.completed, nextView: ShellView.home);
     } on ApiException catch (error) {
@@ -285,6 +390,46 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           onToggleHighContrast: () => setState(
             () => _a11y = _a11y.copyWith(highContrast: !_a11y.highContrast),
           ),
+        );
+
+      case ShellView.consent:
+        final ConsentNotice? notice = _notice;
+        if (notice == null) return StartupScreen(strings: _strings);
+        return ConsentScreen(
+          strings: _strings,
+          notice: notice,
+          speaking: _speaking,
+          audioUnavailable: _audioUnavailable,
+          onListen: () => unawaited(_toggleListen()),
+          onReadFullNotice: () => setState(() => _view = ShellView.consentFullNotice),
+          onAgree: () => unawaited(_recordConsent('GRANTED')),
+          onDecline: () => unawaited(_recordConsent('DECLINED')),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.consentFullNotice:
+        final ConsentNotice? notice = _notice;
+        if (notice == null) return StartupScreen(strings: _strings);
+        return ConsentFullNoticeScreen(
+          strings: _strings,
+          notice: notice,
+          onBack: () => setState(() => _view = ShellView.consent),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.consentDeclined:
+        return ConsentDeclinedScreen(
+          strings: _strings,
+          // The session is already ended and wiped server-side; Exit only clears the shell.
+          onExit: () => unawaited(_endSession(SessionEndReason.exit, nextView: ShellView.home)),
+        );
+
+      case ShellView.consentUnavailable:
+        return KioskErrorScreen(
+          strings: _strings,
+          correlationId: _lastCorrelationId,
+          onStartAgain: () =>
+              unawaited(_endSession(SessionEndReason.exit, nextView: ShellView.home)),
         );
 
       case ShellView.expired:

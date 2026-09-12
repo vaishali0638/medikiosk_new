@@ -33,8 +33,45 @@ export async function truncateAll(db: Kysely<Database>): Promise<void> {
     RESTART IDENTITY CASCADE`.execute(db);
 }
 
+/**
+ * Publishes a consent notice for one language.
+ *
+ * A hospital with reviewed language labels but no published notice offers a patient
+ * nothing they can lawfully agree to, so most fixtures need at least one.
+ */
+export async function publishConsentNotice(
+  db: Kysely<Database>,
+  hospitalId: string,
+  language: string,
+  version = 'v1.0',
+): Promise<void> {
+  await db
+    .insertInto('governance_version')
+    .values({
+      hospital_id: hospitalId,
+      content_kind: 'CONSENT_NOTICE',
+      content_key: `consent-notice/${language}`,
+      semver: '1.0.0',
+      state: 'PUBLISHED',
+      payload: JSON.stringify({
+        version,
+        title: language === 'hi' ? 'गोपनीयता और सहमति' : 'Privacy and consent',
+        collectedItems: ['Basic patient details', 'Health information'],
+        purpose: 'OPD clinical intake and consultation at this hospital',
+        dataCategories: ['demographics', 'clinical-history'],
+        fullText: 'Full notice text for tests.',
+        audioAvailable: false,
+      }),
+      author_actor_id: 'TEST',
+      approvals: JSON.stringify([{ by: 'Dr Test', role: 'CLINICAL_REVIEWER' }]),
+      effective_from: new Date(),
+    })
+    .execute();
+}
+
 /** One hospital, one department, one kiosk, one consented patient with a submitted
- *  pre-check-in — the minimum state from which arrival and token flows can be exercised. */
+ *  pre-check-in — the minimum state from which arrival and token flows can be exercised.
+ *  English is configured and has a published notice, so the hospital is usable as seeded. */
 export async function seedFixture(db: Kysely<Database>): Promise<Fixture> {
   const hospital = await db
     .insertInto('hospital')
@@ -64,6 +101,19 @@ export async function seedFixture(db: Kysely<Database>): Promise<Fixture> {
     .values({ branch_id: branch.id, code: 'MK-OPD-01' })
     .returningAll()
     .executeTakeFirstOrThrow();
+
+  await db
+    .insertInto('hospital_language')
+    .values({
+      hospital_id: hospital.id,
+      language_tag: 'en',
+      label: 'English',
+      clinically_reviewed: true,
+      audio_available: false,
+    })
+    .execute();
+
+  await publishConsentNotice(db, hospital.id, 'en');
 
   const patient = await db
     .insertInto('patient')

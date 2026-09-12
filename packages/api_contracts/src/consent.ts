@@ -47,3 +47,23 @@ export type CreateConsentRequest = z.infer<typeof createConsentRequestSchema>;
 
 export const consentResponseSchema = consentSchema;
 export type ConsentResponse = z.infer<typeof consentResponseSchema>;
+
+/**
+ * Kiosk consent decision.
+ *
+ * The kiosk sends only what it cannot derive: the language the notice was read in and
+ * the decision. Purpose, data categories and notice version are taken from the published
+ * notice server-side, so a stale client cannot record agreement to wording the patient
+ * was not actually shown.
+ */
+export const kioskConsentDecisionSchema = z.object({
+  language: languageTag,
+  decision: z.enum(['GRANTED', 'DECLINED']),
+});
+
+export type KioskConsentDecision = z.infer<typeof kioskConsentDecisionSchema>;
+
+/** Withdrawal. A reason is optional and is never required of a patient. */
+export const revokeConsentRequestSchema = z.object({
+  reason: z.string().max(500).optional(),
+});

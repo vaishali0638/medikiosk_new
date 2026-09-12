@@ -1,0 +1,14 @@
+{
+  "version": "v1.0",
+  "title": "Privacy and consent",
+  "collectedItems": [
+    "Basic patient details",
+    "Health information you tell us",
+    "Documents you choose to upload",
+    "Information prepared for your doctor"
+  ],
+  "purpose": "OPD clinical intake and consultation at this hospital",
+  "dataCategories": ["demographics", "clinical-history", "medical-documents", "ai-assisted-draft"],
+  "fullText": "PLACEHOLDER NOTICE — NOT APPROVED FOR PATIENT USE.\n\nThis wording is a development placeholder. It has not been reviewed or approved by the hospital's legal or clinical governance function, and it must be replaced through the governance console before any real patient is asked to agree to it.\n\nWhat we collect\nWe collect your basic details, the health information you tell us, any documents you choose to upload, and the summary prepared for your doctor.\n\nWhy we collect it\nSo that the doctor you see today has your information ready. It is used for your consultation at this hospital and for the hospital's own records.\n\nWhat we do not do\nThis kiosk does not diagnose you and does not prescribe treatment. Everything it prepares is a draft for your doctor to check. Your doctor decides what goes into your medical record.\n\nYour choices\nYou may decline. If you decline, this kiosk will not continue, and you can still be seen at the counter in the usual way. You may choose to tell the doctor something directly instead of entering it here. You may withdraw your consent later by asking hospital staff.\n\nHow long we keep it\nAccording to this hospital's records retention policy.\n\nWho can see it\nAuthorised hospital staff involved in your care.",
+  "audioAvailable": false
+}

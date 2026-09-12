@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'api/api_client.dart';
 import 'app.dart';
+import 'platform/audio_guidance.dart';
 import 'platform/kiosk_lock.dart';
 import 'session/secure_wipe.dart';
 
@@ -41,6 +42,7 @@ void main() {
       // Only Android provides real lock-down. A desktop or iOS debug build used for
       // design review reports itself as unlocked rather than pretending otherwise.
       kioskLock: Platform.isAndroid ? const AndroidKioskLock() : const UnlockedKioskLock(),
+      audio: Platform.isAndroid ? const PlatformAudioGuidance() : SilentAudioGuidance(),
       wipeBuilder: (List<VoidCallback> clearers) =>
           DeviceSecureWipe(uiStateClearers: clearers),
     ),

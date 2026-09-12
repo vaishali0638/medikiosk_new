@@ -29,6 +29,7 @@ export * from './enums';
 export * from './primitives';
 export * from './errors';
 export * from './consent';
+export * from './consent-notice';
 export * from './patient';
 export * from './precheckin';
 export * from './arrival';

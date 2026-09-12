@@ -75,6 +75,23 @@ class KioskStrings {
     'offline.body': 'Please try again in a moment, or speak to the counter.',
     'offline.retry': 'Try again',
 
+    'consent.weWillCollect': 'We will collect:',
+    'consent.purpose': 'Purpose',
+    'consent.listen': 'Listen to explanation',
+    'consent.stopListening': 'Stop',
+    'consent.audioUnavailable': 'Spoken guidance is not available in this language.',
+    'consent.readFullNotice': 'Read full notice',
+    'consent.agree': 'Agree and Continue',
+    'consent.decline': 'Do not agree',
+    'consent.noticeVersion': 'Notice version',
+    'consent.approvedBy': 'Approved by',
+    'consent.declined.title': 'You have chosen not to provide digital consent',
+    'consent.declined.body':
+        'This MediKiosk clinical intake will not continue. You can still be seen at the counter in the usual way.',
+    'consent.unavailable.title': 'Consent information is not available',
+    'consent.unavailable.body':
+        'This kiosk cannot continue in the language you chose. Please speak to the counter.',
+
     'startup.title': 'Starting up',
     'startup.body': 'Preparing this kiosk.',
     'startup.unavailable': 'This kiosk is not ready for use.',
@@ -126,6 +143,23 @@ class KioskStrings {
     'offline.title': 'अस्पताल प्रणाली उपलब्ध नहीं है',
     'offline.body': 'कृपया थोड़ी देर बाद प्रयास करें, या काउंटर पर बात करें।',
     'offline.retry': 'फिर प्रयास करें',
+
+    'consent.weWillCollect': 'हम यह जानकारी लेंगे:',
+    'consent.purpose': 'उद्देश्य',
+    'consent.listen': 'सुनकर समझें',
+    'consent.stopListening': 'रोकें',
+    'consent.audioUnavailable': 'इस भाषा में बोलकर सहायता उपलब्ध नहीं है।',
+    'consent.readFullNotice': 'पूरी सूचना पढ़ें',
+    'consent.agree': 'सहमत हूँ और आगे बढ़ें',
+    'consent.decline': 'सहमत नहीं हूँ',
+    'consent.noticeVersion': 'सूचना संस्करण',
+    'consent.approvedBy': 'स्वीकृत किया',
+    'consent.declined.title': 'आपने डिजिटल सहमति नहीं दी है',
+    'consent.declined.body':
+        'यह MediKiosk प्रक्रिया आगे नहीं बढ़ेगी। आप हमेशा की तरह काउंटर पर दिखा सकते हैं।',
+    'consent.unavailable.title': 'सहमति की जानकारी उपलब्ध नहीं है',
+    'consent.unavailable.body':
+        'आपकी चुनी हुई भाषा में यह कियोस्क आगे नहीं बढ़ सकता। कृपया काउंटर पर बात करें।',
 
     'startup.title': 'शुरू हो रहा है',
     'startup.body': 'यह कियोस्क तैयार किया जा रहा है।',

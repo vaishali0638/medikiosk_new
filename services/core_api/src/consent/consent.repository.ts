@@ -101,6 +101,10 @@ export class ConsentRepository {
       .executeTakeFirst();
   }
 
+  async findById(id: string, executor: DbExecutor = this.db): Promise<ConsentRow | undefined> {
+    return executor.selectFrom('consent').selectAll().where('id', '=', id).executeTakeFirst();
+  }
+
   /** Withdraws a granted consent. Withdrawal is recorded, never a delete. */
   async revoke(consentId: string, correlationId: string, actorId: string): Promise<ConsentRow> {
     return withSerializableRetry(this.db, async (trx) => {

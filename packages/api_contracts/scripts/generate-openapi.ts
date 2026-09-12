@@ -22,7 +22,13 @@ import {
   KIOSK_DEVICE_HEADER,
 } from '../src/index';
 import { apiErrorSchema } from '../src/errors';
-import { consentResponseSchema, createConsentRequestSchema } from '../src/consent';
+import {
+  consentResponseSchema,
+  createConsentRequestSchema,
+  kioskConsentDecisionSchema,
+  revokeConsentRequestSchema,
+} from '../src/consent';
+import { consentNoticeSchema } from '../src/consent-notice';
 import { patientMatchRequestSchema, patientMatchResponseSchema } from '../src/patient';
 import {
   createPreCheckinRequestSchema,
@@ -50,6 +56,9 @@ const schemas: Record<string, ZodTypeAny> = {
   ApiError: apiErrorSchema,
   CreateConsentRequest: createConsentRequestSchema,
   Consent: consentResponseSchema,
+  ConsentNotice: consentNoticeSchema,
+  KioskConsentDecision: kioskConsentDecisionSchema,
+  RevokeConsentRequest: revokeConsentRequestSchema,
   PatientMatchRequest: patientMatchRequestSchema,
   PatientMatchResponse: patientMatchResponseSchema,
   CreatePreCheckinRequest: createPreCheckinRequestSchema,
@@ -133,13 +142,45 @@ const endpoints: readonly EndpointSpec[] = [
     responseSchema: 'EndKioskSessionResponse',
   },
   {
+    method: 'get',
+    path: '/consents/notice',
+    summary:
+      'The published consent notice for a language. No cross-language fallback: asking a ' +
+      'patient to agree to wording they cannot read is not consent.',
+    tag: 'consent',
+    status: 'implemented',
+    phase: '4',
+    responseSchema: 'ConsentNotice',
+  },
+  {
     method: 'post',
     path: '/consents',
-    summary: 'Record a purpose-bound consent decision.',
+    summary:
+      'Record a consent decision. Purpose, categories and notice version are taken from ' +
+      'the published notice server-side, not from the client.',
     tag: 'consent',
-    status: 'not-implemented',
+    status: 'implemented',
     phase: '4',
-    requestSchema: 'CreateConsentRequest',
+    requestSchema: 'KioskConsentDecision',
+    responseSchema: 'Consent',
+  },
+  {
+    method: 'get',
+    path: '/consents/{id}',
+    summary: "Read a consent artefact back. Scoped to the calling kiosk's hospital.",
+    tag: 'consent',
+    status: 'implemented',
+    phase: '4',
+    responseSchema: 'Consent',
+  },
+  {
+    method: 'post',
+    path: '/consents/{id}/revoke',
+    summary: 'Withdraw a granted consent. Recorded, never deleted.',
+    tag: 'consent',
+    status: 'implemented',
+    phase: '4',
+    requestSchema: 'RevokeConsentRequest',
     responseSchema: 'Consent',
   },
   {
@@ -306,7 +347,7 @@ function buildOperation(spec: EndpointSpec): unknown {
     });
   }
 
-  if (spec.tag === 'kiosk' || spec.tag === 'arrival') {
+  if (spec.tag === 'kiosk' || spec.tag === 'arrival' || spec.tag === 'consent') {
     parameters.push({
       name: KIOSK_DEVICE_HEADER,
       in: 'header',

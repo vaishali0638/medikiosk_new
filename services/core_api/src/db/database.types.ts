@@ -106,10 +106,12 @@ export interface PatientTable {
   id: Generated<string>;
   hospital_id: string;
   provisional: Generated<boolean>;
-  full_name: string;
+  // Null only while provisional. `patient_confirmed_has_demographics` requires all of
+  // these before a patient can leave provisional state.
+  full_name: string | null;
   date_of_birth: Date | null;
   age_years: number | null;
-  sex: string;
+  sex: string | null;
   mobile: string | null;
   email: string | null;
   address: string | null;
@@ -368,5 +370,7 @@ export type NewTokenRequest = Insertable<TokenRequestTable>;
 
 export type PreCheckinRow = Selectable<PreCheckinTable>;
 export type KioskSessionRow = Selectable<KioskSessionTable>;
+export type PatientRow = Selectable<PatientTable>;
+export type GovernanceVersionRow = Selectable<GovernanceVersionTable>;
 export type AuditEventRow = Selectable<AuditEventTable>;
 export type NewAuditEvent = Insertable<AuditEventTable>;
