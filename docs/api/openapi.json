@@ -1,0 +1,2554 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MediKiosk Core API",
+    "version": "1.0.0-alpha.1",
+    "description": "Patient intake, consent, pre-check-in, QR validation and HIS token requests.\n\nOperations carry `x-status`. `not-implemented` means the contract is fixed but the endpoint is not built yet — it is listed so the intended surface is visible, not to imply it works. The hospital HIS remains the sole authority for a final patient token."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_FAILED",
+              "CONSENT_REQUIRED",
+              "CONSENT_DECLINED",
+              "CONSENT_EXPIRED",
+              "IDENTITY_NOT_CONFIRMED",
+              "IDENTITY_AMBIGUOUS",
+              "QR_INVALID",
+              "QR_EXPIRED",
+              "QR_ALREADY_USED",
+              "QR_WRONG_FACILITY",
+              "PRE_CHECKIN_NOT_SUBMITTED",
+              "PRE_CHECKIN_CANCELLED",
+              "TOKEN_ALREADY_ISSUED",
+              "TOKEN_REQUEST_FAILED",
+              "TOKEN_RECONCILIATION_REQUIRED",
+              "HIS_UNAVAILABLE",
+              "RATE_LIMITED",
+              "SESSION_EXPIRED",
+              "INVALID_STATE_TRANSITION",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "patientMessage": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "code",
+          "patientMessage",
+          "correlationId"
+        ],
+        "additionalProperties": false
+      },
+      "CreateConsentRequest": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hospitalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "dataCategories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "demographics",
+                "clinical-history",
+                "voice-transcript",
+                "medical-documents",
+                "ai-assisted-draft"
+              ]
+            },
+            "minItems": 1
+          },
+          "language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "noticeVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "captureMethod": {
+            "type": "string",
+            "enum": [
+              "KIOSK_TOUCH",
+              "KIOSK_VOICE",
+              "MOBILE_PWA"
+            ]
+          },
+          "kioskId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "GRANTED",
+              "DECLINED"
+            ]
+          }
+        },
+        "required": [
+          "patientId",
+          "hospitalId",
+          "dataCategories",
+          "language",
+          "noticeVersion",
+          "captureMethod",
+          "decision"
+        ],
+        "additionalProperties": false
+      },
+      "Consent": {
+        "type": "object",
+        "properties": {
+          "consentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hospitalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "OPD clinical intake and consultation"
+            ]
+          },
+          "dataCategories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "demographics",
+                "clinical-history",
+                "voice-transcript",
+                "medical-documents",
+                "ai-assisted-draft"
+              ]
+            },
+            "minItems": 1
+          },
+          "language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 16
+          },
+          "noticeVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "GRANTED",
+              "DECLINED",
+              "EXPIRED",
+              "REVOKED"
+            ]
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "captureMethod": {
+            "type": "string",
+            "enum": [
+              "KIOSK_TOUCH",
+              "KIOSK_VOICE",
+              "MOBILE_PWA"
+            ]
+          },
+          "kioskId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "consentId",
+          "patientId",
+          "hospitalId",
+          "purpose",
+          "dataCategories",
+          "language",
+          "noticeVersion",
+          "status",
+          "capturedAt",
+          "validUntil",
+          "captureMethod"
+        ],
+        "additionalProperties": false
+      },
+      "PatientMatchRequest": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "UHID_AND_ENCOUNTER"
+                ]
+              },
+              "uhid": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9/-]+$"
+              },
+              "hospitalId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "method",
+              "uhid",
+              "hospitalId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "APPOINTMENT_QR"
+                ]
+              },
+              "qrPayload": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "method",
+              "qrPayload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "MOBILE_OTP"
+                ]
+              },
+              "verificationId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "method",
+              "verificationId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "ABHA_VERIFIED"
+                ]
+              },
+              "abhaToken": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "method",
+              "abhaToken"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PatientMatchResponse": {
+        "type": "object",
+        "properties": {
+          "strength": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "MODERATE",
+              "STRONG",
+              "STRONGEST"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "UHID_AND_ENCOUNTER",
+              "APPOINTMENT_QR",
+              "ABHA_VERIFIED",
+              "MOBILE_OTP"
+            ]
+          },
+          "candidateCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "masked": {
+            "type": "object",
+            "properties": {
+              "maskedName": {
+                "type": "string"
+              },
+              "maskedMobile": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "maskedName",
+              "maskedMobile"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "strength",
+          "method",
+          "candidateCount"
+        ],
+        "additionalProperties": false
+      },
+      "CreatePreCheckinRequest": {
+        "type": "object",
+        "properties": {
+          "consentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "visit": {
+            "type": "object",
+            "properties": {
+              "hospitalId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "branchId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "departmentId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "ayushSystem": {
+                "type": "string",
+                "enum": [
+                  "AYURVEDA",
+                  "UNANI",
+                  "SIDDHA",
+                  "YOGA_NATUROPATHY",
+                  "SOWA_RIGPA",
+                  "HOMOEOPATHY"
+                ]
+              },
+              "visitType": {
+                "type": "string",
+                "enum": [
+                  "NEW_COMPLAINT",
+                  "REGULAR_FOLLOW_UP"
+                ]
+              },
+              "appointmentRef": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "visitWindowStart": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "visitWindowEnd": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "hospitalId",
+              "branchId",
+              "departmentId",
+              "visitType",
+              "visitWindowStart",
+              "visitWindowEnd"
+            ],
+            "additionalProperties": false
+          },
+          "demographics": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "dateOfBirth": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "ageYears": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 130
+              },
+              "sex": {
+                "type": "string",
+                "enum": [
+                  "FEMALE",
+                  "MALE",
+                  "OTHER",
+                  "PREFER_NOT_TO_SAY"
+                ]
+              },
+              "mobile": {
+                "type": "string",
+                "pattern": "^[6-9]\\d{9}$"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "address": {
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "name",
+              "sex",
+              "mobile"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "consentId",
+          "visit",
+          "demographics"
+        ],
+        "additionalProperties": false
+      },
+      "PreCheckin": {
+        "type": "object",
+        "properties": {
+          "preCheckinId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "consentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "visit": {
+            "type": "object",
+            "properties": {
+              "hospitalId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "branchId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "departmentId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "ayushSystem": {
+                "type": "string",
+                "enum": [
+                  "AYURVEDA",
+                  "UNANI",
+                  "SIDDHA",
+                  "YOGA_NATUROPATHY",
+                  "SOWA_RIGPA",
+                  "HOMOEOPATHY"
+                ]
+              },
+              "visitType": {
+                "type": "string",
+                "enum": [
+                  "NEW_COMPLAINT",
+                  "REGULAR_FOLLOW_UP"
+                ]
+              },
+              "appointmentRef": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "visitWindowStart": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "visitWindowEnd": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "hospitalId",
+              "branchId",
+              "departmentId",
+              "visitType",
+              "visitWindowStart",
+              "visitWindowEnd"
+            ],
+            "additionalProperties": false
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SUBMITTED",
+              "QR_ISSUED",
+              "QR_EXPIRED",
+              "ARRIVAL_CONFIRMED",
+              "TOKEN_REQUESTED",
+              "TOKEN_ISSUED",
+              "CONSUMED",
+              "CANCELLED",
+              "RECONCILIATION_REQUIRED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "preCheckinId",
+          "patientId",
+          "consentId",
+          "visit",
+          "state",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "IssueQrResponse": {
+        "type": "object",
+        "properties": {
+          "preCheckinId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payload": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "preCheckinId",
+          "payload",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "ArrivalCheckInRequest": {
+        "type": "object",
+        "properties": {
+          "kioskId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "qrPayload": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "kioskId",
+          "qrPayload"
+        ],
+        "additionalProperties": false
+      },
+      "ArrivalCheckInResponse": {
+        "type": "object",
+        "properties": {
+          "arrivalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "masked": {
+            "type": "object",
+            "properties": {
+              "maskedName": {
+                "type": "string"
+              },
+              "maskedMobile": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "maskedName",
+              "maskedMobile"
+            ],
+            "additionalProperties": false
+          },
+          "hospitalName": {
+            "type": "string"
+          },
+          "departmentName": {
+            "type": "string"
+          },
+          "visitTypeLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "arrivalId",
+          "masked",
+          "hospitalName",
+          "departmentName",
+          "visitTypeLabel"
+        ],
+        "additionalProperties": false
+      },
+      "ArrivalConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "identityConfirmed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "changedSections": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "SYMPTOMS",
+                "MEDICINES",
+                "ALLERGY_OR_SIDE_EFFECT",
+                "NEW_REPORT",
+                "NEW_DIAGNOSIS",
+                "OTHER"
+              ]
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "identityConfirmed"
+        ],
+        "additionalProperties": false
+      },
+      "TokenRequest": {
+        "type": "object",
+        "properties": {
+          "kioskId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "kioskId"
+        ],
+        "additionalProperties": false
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "REQUESTED",
+              "ACKNOWLEDGED",
+              "ISSUED",
+              "FAILED",
+              "UNKNOWN_RECONCILIATION_REQUIRED"
+            ]
+          },
+          "token": {
+            "type": "string"
+          },
+          "departmentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "departmentName": {
+            "type": "string"
+          },
+          "room": {
+            "type": "string"
+          },
+          "queueStatus": {
+            "type": "string"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "ArrivalStatusResponse": {
+        "type": "object",
+        "properties": {
+          "arrivalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tokenState": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "REQUESTED",
+              "ACKNOWLEDGED",
+              "ISSUED",
+              "FAILED",
+              "UNKNOWN_RECONCILIATION_REQUIRED"
+            ]
+          },
+          "token": {
+            "type": "string"
+          },
+          "reconciliationRequired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "arrivalId",
+          "tokenState",
+          "reconciliationRequired"
+        ],
+        "additionalProperties": false
+      },
+      "KioskConfigResponse": {
+        "type": "object",
+        "properties": {
+          "hospitalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "hospitalName": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "kioskId": {
+            "type": "string"
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tag": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 16
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "clinicallyReviewed": {
+                  "type": "boolean"
+                },
+                "audioAvailable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "tag",
+                "label",
+                "clinicallyReviewed",
+                "audioAvailable"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "departmentId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ayushSystem": {
+                  "type": "string",
+                  "enum": [
+                    "AYURVEDA",
+                    "UNANI",
+                    "SIDDHA",
+                    "YOGA_NATUROPATHY",
+                    "SOWA_RIGPA",
+                    "HOMOEOPATHY"
+                  ]
+                }
+              },
+              "required": [
+                "departmentId",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "ayushSystems": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AYURVEDA",
+                "UNANI",
+                "SIDDHA",
+                "YOGA_NATUROPATHY",
+                "SOWA_RIGPA",
+                "HOMOEOPATHY"
+              ]
+            }
+          },
+          "features": {
+            "type": "object",
+            "properties": {
+              "abha": {
+                "type": "boolean"
+              },
+              "aiSummary": {
+                "type": "boolean"
+              },
+              "ocr": {
+                "type": "boolean"
+              },
+              "redFlags": {
+                "type": "boolean"
+              },
+              "voiceIntake": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "abha",
+              "aiSummary",
+              "ocr",
+              "redFlags",
+              "voiceIntake"
+            ],
+            "additionalProperties": false
+          },
+          "contentVersions": {
+            "type": "object",
+            "properties": {
+              "questionnaire": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d+\\.\\d+$"
+              },
+              "translations": {
+                "type": "string",
+                "pattern": "^\\d+\\.\\d+\\.\\d+$"
+              },
+              "consentNotice": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "questionnaire",
+              "translations",
+              "consentNotice"
+            ],
+            "additionalProperties": false
+          },
+          "session": {
+            "type": "object",
+            "properties": {
+              "inactivityWarningSeconds": {
+                "type": "integer",
+                "exclusiveMinimum": true,
+                "minimum": 0
+              },
+              "inactivityWipeSeconds": {
+                "type": "integer",
+                "exclusiveMinimum": true,
+                "minimum": 0
+              }
+            },
+            "required": [
+              "inactivityWarningSeconds",
+              "inactivityWipeSeconds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "hospitalId",
+          "hospitalName",
+          "branchId",
+          "kioskId",
+          "languages",
+          "departments",
+          "ayushSystems",
+          "features",
+          "contentVersions",
+          "session"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "paths": {
+    "/v1/kiosk/config": {
+      "get": {
+        "summary": "Languages, departments, AYUSH systems, feature flags and content versions.",
+        "tags": [
+          "kiosk"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "3",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KioskConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consents": {
+      "post": {
+        "summary": "Record a purpose-bound consent decision.",
+        "tags": [
+          "consent"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "4",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConsentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Consent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/patients/match": {
+      "post": {
+        "summary": "Resolve a patient identity. Name alone is never sufficient.",
+        "tags": [
+          "identity"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "5",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientMatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientMatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precheckins": {
+      "post": {
+        "summary": "Create a mobile pre-check-in.",
+        "tags": [
+          "precheckin"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "6",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Collapses retries onto one operation. For tokens: `<kioskCode>-<preCheckinId>`.",
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePreCheckinRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreCheckin"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precheckins/{id}/submit": {
+      "post": {
+        "summary": "Submit a reviewed intake.",
+        "tags": [
+          "precheckin"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "6",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Collapses retries onto one operation. For tokens: `<kioskCode>-<preCheckinId>`.",
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreCheckin"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precheckins/{id}/qr": {
+      "post": {
+        "summary": "Issue a signed, short-lived, single-use QR reference. Carries no medical data.",
+        "tags": [
+          "precheckin"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "6",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueQrResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/arrival/check-in": {
+      "post": {
+        "summary": "Validate a scanned QR at a kiosk. Discloses nothing clinical on failure.",
+        "tags": [
+          "arrival"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "6",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArrivalCheckInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalCheckInResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/arrival/{id}/confirm": {
+      "post": {
+        "summary": "Confirm masked identity and declare what has changed since pre-check-in.",
+        "tags": [
+          "arrival"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "6",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArrivalConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/arrival/{id}/token": {
+      "post": {
+        "summary": "Request a final token from the hospital HIS. Never issues one independently.",
+        "tags": [
+          "arrival"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "7",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "description": "Collapses retries onto one operation. For tokens: `<kioskCode>-<preCheckinId>`.",
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/arrival/{id}/status": {
+      "get": {
+        "summary": "Poll a token outcome and reconciliation state.",
+        "tags": [
+          "arrival"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "7",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/documents": {
+      "post": {
+        "summary": "Upload an original document and queue asynchronous processing.",
+        "tags": [
+          "documents"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "10",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/followups/{id}/delta": {
+      "post": {
+        "summary": "Submit follow-up changes against the last clinician-verified visit.",
+        "tags": [
+          "followup"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "12",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/doctor/worklist": {
+      "get": {
+        "summary": "Authorised clinician worklist.",
+        "tags": [
+          "doctor"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "13",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intakes/{id}/summary": {
+      "get": {
+        "summary": "Source-labelled pre-consultation draft.",
+        "tags": [
+          "doctor"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "13",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intakes/{id}/confirm": {
+      "post": {
+        "summary": "Clinician confirmation. Required before any clinical export.",
+        "tags": [
+          "doctor"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "13",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/encounters/{id}/export": {
+      "post": {
+        "summary": "Export a clinician-verified record to the HIS/EMR.",
+        "tags": [
+          "doctor"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "13",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/releases/{id}/approve": {
+      "post": {
+        "summary": "Approve, publish or roll back governed clinical content.",
+        "tags": [
+          "governance"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "14",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

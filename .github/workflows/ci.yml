@@ -69,8 +69,8 @@ jobs:
       - run: npm run tokens:build
       - run: git diff --exit-code -- apps/kiosk_flutter/lib/theme/design_tokens.dart
 
-  migrations:
-    name: Migrations run from an empty database
+  database:
+    name: Migrations, seed and integration tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -82,6 +82,8 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgres://medikiosk:ci_only@localhost:5432/medikiosk_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,7 +91,40 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # Phase 2 adds the migration runner. Until then this job only proves the database
-      # service is reachable — it does not pretend to have run migrations.
-      - name: Database reachable
-        run: node -e "require('net').connect(5432,'localhost').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"
+
+      - name: Migrations run from an empty database
+        run: npm run migrate -w @medikiosk/core-api
+
+      - name: Migrations are idempotent
+        run: npm run migrate -w @medikiosk/core-api
+
+      - name: Migrations reverse and re-apply cleanly
+        run: npm run migrate:redo -w @medikiosk/core-api
+
+      - name: Seed is idempotent
+        run: |
+          npm run seed -w @medikiosk/core-api
+          npm run seed -w @medikiosk/core-api
+
+      # Integration tests need an empty schema; the seed above proved its own path.
+      - name: Reset and run integration tests
+        run: |
+          npm run migrate:reset -w @medikiosk/core-api
+          npm run test:int -w @medikiosk/core-api
+        env:
+          DATABASE_URL: postgres://medikiosk:ci_only@localhost:5432/medikiosk_ci
+
+  openapi_in_sync:
+    name: Generated OpenAPI is in sync
+    runs-on: ubuntu-latest
+    # docs/api/openapi.json is derived from the Zod contracts. Regenerate and diff, so a
+    # contract change cannot ship without the published document following it.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @medikiosk/api-contracts
+      - run: git diff --exit-code -- docs/api/openapi.json

@@ -1,11 +1,3 @@
-/**
- * Shared API contracts.
- *
- * Phase 2 populates this package with the Zod schemas that are the single source of
- * truth for the OpenAPI document and for the kiosk/PWA typed clients. Phase 1 only
- * fixes the contract version so every surface can assert it agrees with the server.
- */
-
 /** Bumped whenever a breaking change is made to any /v1 contract. */
 export const API_CONTRACT_VERSION = '1.0.0-alpha.1' as const;
 
@@ -23,3 +15,12 @@ export const CORRELATION_ID_HEADER = 'x-correlation-id' as const;
  * Format for tokens: `<kioskId>-<preCheckinId>`.
  */
 export const IDEMPOTENCY_KEY_HEADER = 'idempotency-key' as const;
+
+export * from './enums';
+export * from './primitives';
+export * from './errors';
+export * from './consent';
+export * from './patient';
+export * from './precheckin';
+export * from './arrival';
+export * from './kiosk-config';

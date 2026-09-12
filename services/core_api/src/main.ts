@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -19,7 +19,9 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(API_BASE_PATH.replace(/^\//, ''), {
     exclude: ['health', 'health/ready'],
   });
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
+  // No class-validator pipe: the Zod schemas in @medikiosk/api-contracts are the single
+  // source of truth for request shape, and a second validation mechanism would let the
+  // published contract and the accepted payload drift apart.
 
   const openApi = new DocumentBuilder()
     .setTitle('MediKiosk Core API')

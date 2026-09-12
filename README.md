@@ -33,7 +33,7 @@ packages/design_tokens        Canonical theme (generates Dart + CSS)
 packages/questionnaire_schema Versioned questionnaire schema
 packages/terminology          Provenance labels and value sets
 infra/docker           Local development stack
-infra/migrations       PostgreSQL migrations               [Phase 2]
+infra/migrations       PostgreSQL migrations (6 files, 21 tables)
 tools                  Repository guards (forbidden-option scan)
 docs                   Architecture, API, security, runbooks
 tests                  Contract, integration and end-to-end journeys
@@ -47,7 +47,17 @@ Requires Node 22+ (see `.nvmrc`), Docker, and Flutter 3.27+ for the kiosk client
 npm install
 cp infra/docker/.env.example infra/docker/.env   # then edit the placeholder passwords
 npm run docker:up                                 # Postgres 16, Redis, MinIO, core_api
-curl http://localhost:3000/health
+curl http://localhost:3000/health/ready
+```
+
+Against a local PostgreSQL instead of Compose:
+
+```bash
+createdb medikiosk_dev
+export DATABASE_URL=postgres://localhost:5432/medikiosk_dev
+npm run migrate -w @medikiosk/core-api
+npm run seed    -w @medikiosk/core-api
+npm run start:dev -w @medikiosk/core-api
 ```
 
 Kiosk client — the Android host project is generated rather than committed, so run once:
@@ -61,13 +71,24 @@ flutter pub get && flutter analyze && flutter test
 ## Checks
 
 ```bash
-npm run verify          # format, lint, typecheck, forbidden-option scan, tests
+npm run verify          # format, lint, typecheck, forbidden-option scan, unit tests
 npm run scan:forbidden  # banned kiosk options, on its own
 npm run tokens:build    # regenerate the Dart and CSS themes from the TS tokens
+npm run build -w @medikiosk/api-contracts   # regenerate docs/api/openapi.json
+
+createdb medikiosk_test
+DATABASE_URL=postgres://localhost:5432/medikiosk_test \
+  npm run migrate:reset -w @medikiosk/core-api && npm run test:int -w @medikiosk/core-api
 ```
 
-`npm run verify` does not cover the Flutter client — run `flutter analyze && flutter test`
-separately, as CI does.
+`npm run verify` covers neither the Flutter client nor the integration tests — run
+`flutter analyze && flutter test` and `npm run test:int` separately, as CI does.
+
+## Data model
+
+21 tables, 21 enum types. See [docs/architecture/data-model.md](docs/architecture/data-model.md)
+for the ERD and the constraints that carry safety properties — one issued token per visit,
+one live QR per visit, an append-only audit trail.
 
 ## Design tokens
 

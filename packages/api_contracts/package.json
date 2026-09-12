@@ -15,8 +15,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && tsx scripts/generate-openapi.ts",
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "zod-to-json-schema": "^3.24.1"
   }
 }

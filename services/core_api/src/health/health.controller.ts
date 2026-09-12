@@ -1,6 +1,9 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { sql } from 'kysely';
 import { API_CONTRACT_VERSION } from '@medikiosk/api-contracts';
+import { DB } from '../db/db.module';
+import type { Db } from '../db/db.provider';
 
 export interface LivenessResponse {
   readonly status: 'ok';
@@ -9,9 +12,11 @@ export interface LivenessResponse {
   readonly uptimeSeconds: number;
 }
 
+export type CheckState = 'ok' | 'unconfigured' | 'failing';
+
 export interface ReadinessResponse {
   readonly status: 'ready' | 'degraded';
-  readonly checks: Readonly<Record<string, 'ok' | 'unconfigured' | 'failing'>>;
+  readonly checks: Readonly<Record<string, CheckState>>;
 }
 
 /**
@@ -21,6 +26,8 @@ export interface ReadinessResponse {
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
+  constructor(@Inject(DB) private readonly db: Db) {}
+
   @Get()
   @ApiOperation({ summary: 'Liveness probe — the process is up and serving.' })
   liveness(): LivenessResponse {
@@ -33,20 +40,28 @@ export class HealthController {
   }
 
   @Get('ready')
-  @ApiOperation({
-    summary:
-      'Readiness probe — reports dependency status. Phase 2 adds real Postgres, Redis and object-store checks.',
-  })
-  readiness(): ReadinessResponse {
-    // Phase 1 has no dependencies wired yet; they are reported as `unconfigured`
-    // rather than `ok` so monitoring never mistakes a stub for a working dependency.
-    const checks = {
-      database: 'unconfigured',
+  @ApiOperation({ summary: 'Readiness probe — reports live dependency status.' })
+  async readiness(): Promise<ReadinessResponse> {
+    const checks: Record<string, CheckState> = {
+      database: await this.checkDatabase(),
+      // Not wired yet. Reported as `unconfigured` rather than `ok`, so monitoring is
+      // never told a stub is a working dependency.
       redis: 'unconfigured',
       objectStore: 'unconfigured',
       hisAdapter: 'unconfigured',
-    } as const;
+    };
 
-    return { status: 'degraded', checks };
+    const ready = Object.values(checks).every((state) => state === 'ok');
+    return { status: ready ? 'ready' : 'degraded', checks };
+  }
+
+  /** Also verifies migrations have run: a reachable but unmigrated database is not ready. */
+  private async checkDatabase(): Promise<CheckState> {
+    try {
+      await sql`SELECT 1 FROM schema_migrations LIMIT 1`.execute(this.db);
+      return 'ok';
+    } catch {
+      return 'failing';
+    }
   }
 }
