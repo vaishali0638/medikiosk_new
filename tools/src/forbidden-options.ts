@@ -23,6 +23,7 @@ export const FORBIDDEN_OPTIONS: readonly string[] = [
 export const SCANNED_ROOTS: readonly string[] = [
   'apps/kiosk_flutter/lib',
   'apps/kiosk_flutter/assets',
+  'apps/kiosk_flutter/android/app/src/main',
   'apps/patient_pwa/src',
   'apps/patient_pwa/messages',
   'apps/doctor_web/src',
@@ -43,4 +44,6 @@ export const SCANNED_EXTENSIONS: readonly string[] = [
   '.yaml',
   '.yml',
   '.html',
+  '.kt',
+  '.xml',
 ];

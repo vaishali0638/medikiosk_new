@@ -50,6 +50,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: apps/kiosk_flutter/pubspec.yaml
+      # The Gradle scaffolding is generated, not committed. `flutter create` overwrites
+      # the templated Android files, so the MediKiosk ones are restored afterwards.
+      - run: flutter create --platforms=android --org org.medikiosk --project-name medikiosk_kiosk .
+      - run: git checkout -- android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin android/app/src/main/res/xml
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
@@ -105,6 +110,15 @@ jobs:
         run: |
           npm run seed -w @medikiosk/core-api
           npm run seed -w @medikiosk/core-api
+
+      # Boots the COMPILED artifact, not the source. NestJS DI depends on
+      # emitDecoratorMetadata, which is a property of the compiler rather than the code:
+      # ts-jest emits it and esbuild does not, so a green test suite can sit alongside a
+      # binary whose controllers have undefined dependencies. Only running dist/ catches it.
+      - name: Smoke-test the compiled artifact
+        run: |
+          npm run build -w @medikiosk/core-api
+          npm run smoke -w @medikiosk/core-api
 
       # Integration tests need an empty schema; the seed above proved its own path.
       - name: Reset and run integration tests

@@ -1,6 +1,6 @@
 import { Global, Inject, Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { type Pool } from 'pg';
+import { Pool } from 'pg';
 import type { Env } from '../config/env';
 import { createDb, createPool, registerEnumArrayParsers, type Db } from './db.provider';
 

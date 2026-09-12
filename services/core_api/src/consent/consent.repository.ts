@@ -6,7 +6,7 @@ import type { Db } from '../db/db.provider';
 import type { ConsentRow } from '../db/database.types';
 import { withSerializableRetry, type DbExecutor } from '../db/transaction';
 import { consentMachine } from '../state-machines';
-import { type AuditRepository } from '../audit/audit.repository';
+import { AuditRepository } from '../audit/audit.repository';
 
 export interface CaptureConsentInput {
   readonly patientId: string;

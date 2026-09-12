@@ -991,6 +991,145 @@
           "session"
         ],
         "additionalProperties": false
+      },
+      "StartKioskSessionRequest": {
+        "type": "object",
+        "properties": {
+          "kioskId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "kioskId"
+        ],
+        "additionalProperties": false
+      },
+      "KioskSession": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "LANGUAGE_SELECTED",
+              "CONSENT_PENDING",
+              "CONSENT_GRANTED",
+              "IDENTITY_PENDING",
+              "IDENTITY_CONFIRMED",
+              "INTAKE_IN_PROGRESS",
+              "REVIEW_PENDING",
+              "SUBMITTED",
+              "TOKEN_PENDING",
+              "TOKEN_ISSUED",
+              "EXITED",
+              "EXPIRED",
+              "ERROR"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "warnAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "sessionId",
+          "state",
+          "startedAt",
+          "warnAt",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "SelectLanguageRequest": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 16
+          }
+        },
+        "required": [
+          "language"
+        ],
+        "additionalProperties": false
+      },
+      "EndKioskSessionRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "EXIT",
+              "TIMEOUT",
+              "COMPLETED",
+              "ERROR"
+            ]
+          },
+          "wiped": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "wiped"
+        ],
+        "additionalProperties": false
+      },
+      "EndKioskSessionResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "LANGUAGE_SELECTED",
+              "CONSENT_PENDING",
+              "CONSENT_GRANTED",
+              "IDENTITY_PENDING",
+              "IDENTITY_CONFIRMED",
+              "INTAKE_IN_PROGRESS",
+              "REVIEW_PENDING",
+              "SUBMITTED",
+              "TOKEN_PENDING",
+              "TOKEN_ISSUED",
+              "EXITED",
+              "EXPIRED",
+              "ERROR"
+            ]
+          },
+          "endedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "sessionId",
+          "state",
+          "endedAt"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -1001,7 +1140,7 @@
         "tags": [
           "kiosk"
         ],
-        "x-status": "not-implemented",
+        "x-status": "implemented",
         "x-phase": "3",
         "parameters": [
           {
@@ -1013,6 +1152,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1022,6 +1170,425 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/KioskConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kiosk/sessions": {
+      "post": {
+        "summary": "Start a kiosk session.",
+        "tags": [
+          "kiosk"
+        ],
+        "x-status": "implemented",
+        "x-phase": "3",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KioskSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kiosk/sessions/{id}/activity": {
+      "post": {
+        "summary": "Record patient activity and reset the inactivity window.",
+        "tags": [
+          "kiosk"
+        ],
+        "x-status": "implemented",
+        "x-phase": "3",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KioskSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kiosk/sessions/{id}/language": {
+      "post": {
+        "summary": "Record the selected language. Only clinically reviewed languages are accepted.",
+        "tags": [
+          "kiosk"
+        ],
+        "x-status": "implemented",
+        "x-phase": "3",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectLanguageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KioskSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kiosk/sessions/{id}/end": {
+      "post": {
+        "summary": "End a session. Requires the client to attest that it wiped its state.",
+        "tags": [
+          "kiosk"
+        ],
+        "x-status": "implemented",
+        "x-phase": "3",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndKioskSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndKioskSessionResponse"
                 }
               }
             }
@@ -1587,6 +2154,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1690,6 +2266,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1785,6 +2370,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1899,6 +2493,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
             }
           }
         ],

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The kiosk talks only to the hospital backend on the managed network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Phase 6 (QR scan) and Phase 10 (document capture). Declared here so the MDM
+         profile can pre-grant them; nothing in Phase 3 opens the camera. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <application
+        android:label="MediKiosk"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <!-- LAUNCHER plus HOME plus DEFAULT makes MediKiosk the device home app, so a
+                 reboot, a crash-restart or a stray home press lands back on the kiosk home
+                 screen instead of the Android launcher. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Device-owner receiver for Android Enterprise provisioning. -->
+        <receiver
+            android:name=".KioskDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+</manifest>

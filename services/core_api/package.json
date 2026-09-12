@@ -8,7 +8,7 @@
     "build": "tsc --build",
     "clean": "rm -rf dist *.tsbuildinfo",
     "start": "node dist/main.js",
-    "start:dev": "tsx watch src/main.ts",
+    "start:dev": "node --watch --require ts-node/register src/main.ts",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "migrate": "node-pg-migrate up -m ../../infra/migrations -j sql --migrations-table schema_migrations",
@@ -16,7 +16,8 @@
     "migrate:redo": "node-pg-migrate down 6 -m ../../infra/migrations -j sql --migrations-table schema_migrations && node-pg-migrate up -m ../../infra/migrations -j sql --migrations-table schema_migrations",
     "migrate:reset": "tsx scripts/reset-database.ts",
     "seed": "tsx scripts/seed.ts",
-    "test:int": "jest --config jest.integration.config.js --runInBand"
+    "test:int": "jest --config jest.integration.config.js --runInBand",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@medikiosk/api-contracts": "0.1.0",
@@ -44,6 +45,7 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "node-pg-migrate": "^7.9.0",
-    "@types/pg": "^8.11.10"
+    "@types/pg": "^8.11.10",
+    "ts-node": "^10.9.2"
   }
 }

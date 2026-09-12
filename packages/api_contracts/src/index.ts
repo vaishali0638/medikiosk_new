@@ -16,6 +16,15 @@ export const CORRELATION_ID_HEADER = 'x-correlation-id' as const;
  */
 export const IDEMPOTENCY_KEY_HEADER = 'idempotency-key' as const;
 
+/**
+ * Device code the kiosk presents on every request, e.g. `MK-OPD-03`.
+ *
+ * Phase 3 uses this to scope a request to a known, enabled device. It is an identifier,
+ * not a credential: Phase 15 adds mutual-TLS device certificates, and the fingerprint
+ * column already exists on kiosk_device to receive them.
+ */
+export const KIOSK_DEVICE_HEADER = 'x-kiosk-device' as const;
+
 export * from './enums';
 export * from './primitives';
 export * from './errors';
@@ -24,3 +33,4 @@ export * from './patient';
 export * from './precheckin';
 export * from './arrival';
 export * from './kiosk-config';
+export * from './kiosk-session';

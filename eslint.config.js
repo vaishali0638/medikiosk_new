@@ -41,6 +41,17 @@ module.exports = tseslint.config(
     },
   },
   {
+    // NestJS resolves constructor dependencies from emitDecoratorMetadata, which needs the
+    // class present as a VALUE at runtime. consistent-type-imports cannot see that and will
+    // happily rewrite an injected dependency to `import type`, erasing the reference and
+    // breaking DI at container start — silently, since direct-instantiation unit tests
+    // still pass. The rule is off wherever Nest decorators are used.
+    files: ['services/core_api/src/**/*.ts'],
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'off',
+    },
+  },
+  {
     files: ['**/*.spec.ts', '**/test/**/*.ts'],
     languageOptions: {
       globals: {

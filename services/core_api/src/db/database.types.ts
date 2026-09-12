@@ -367,5 +367,6 @@ export type TokenRequestRow = Selectable<TokenRequestTable>;
 export type NewTokenRequest = Insertable<TokenRequestTable>;
 
 export type PreCheckinRow = Selectable<PreCheckinTable>;
+export type KioskSessionRow = Selectable<KioskSessionTable>;
 export type AuditEventRow = Selectable<AuditEventTable>;
 export type NewAuditEvent = Insertable<AuditEventTable>;

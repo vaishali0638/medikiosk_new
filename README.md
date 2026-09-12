@@ -21,7 +21,7 @@ anything before it reaches the EMR.
 ## Repository layout
 
 ```
-apps/kiosk_flutter     Flutter kiosk client (Android 12+, dedicated-device mode)
+apps/kiosk_flutter     Flutter kiosk client (Android 12+, lock-task mode)
 apps/patient_pwa       Patient pre-check-in PWA            [placeholder — Phase 6]
 apps/doctor_web        Doctor dashboard                    [placeholder — Phase 13]
 apps/governance_web    Clinical governance console         [placeholder — Phase 14]

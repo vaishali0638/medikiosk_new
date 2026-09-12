@@ -15,7 +15,12 @@ import { dirname, resolve } from 'node:path';
 import type { ZodTypeAny } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { API_CONTRACT_VERSION, CORRELATION_ID_HEADER, IDEMPOTENCY_KEY_HEADER } from '../src/index';
+import {
+  API_CONTRACT_VERSION,
+  CORRELATION_ID_HEADER,
+  IDEMPOTENCY_KEY_HEADER,
+  KIOSK_DEVICE_HEADER,
+} from '../src/index';
 import { apiErrorSchema } from '../src/errors';
 import { consentResponseSchema, createConsentRequestSchema } from '../src/consent';
 import { patientMatchRequestSchema, patientMatchResponseSchema } from '../src/patient';
@@ -33,6 +38,13 @@ import {
   tokenResponseSchema,
 } from '../src/arrival';
 import { kioskConfigResponseSchema } from '../src/kiosk-config';
+import {
+  endKioskSessionRequestSchema,
+  endKioskSessionResponseSchema,
+  kioskSessionSchema,
+  selectLanguageRequestSchema,
+  startKioskSessionRequestSchema,
+} from '../src/kiosk-session';
 
 const schemas: Record<string, ZodTypeAny> = {
   ApiError: apiErrorSchema,
@@ -50,6 +62,11 @@ const schemas: Record<string, ZodTypeAny> = {
   TokenResponse: tokenResponseSchema,
   ArrivalStatusResponse: arrivalStatusResponseSchema,
   KioskConfigResponse: kioskConfigResponseSchema,
+  StartKioskSessionRequest: startKioskSessionRequestSchema,
+  KioskSession: kioskSessionSchema,
+  SelectLanguageRequest: selectLanguageRequestSchema,
+  EndKioskSessionRequest: endKioskSessionRequestSchema,
+  EndKioskSessionResponse: endKioskSessionResponseSchema,
 };
 
 type Status = 'implemented' | 'not-implemented';
@@ -73,9 +90,47 @@ const endpoints: readonly EndpointSpec[] = [
     path: '/kiosk/config',
     summary: 'Languages, departments, AYUSH systems, feature flags and content versions.',
     tag: 'kiosk',
-    status: 'not-implemented',
+    status: 'implemented',
     phase: '3',
     responseSchema: 'KioskConfigResponse',
+  },
+  {
+    method: 'post',
+    path: '/kiosk/sessions',
+    summary: 'Start a kiosk session.',
+    tag: 'kiosk',
+    status: 'implemented',
+    phase: '3',
+    responseSchema: 'KioskSession',
+  },
+  {
+    method: 'post',
+    path: '/kiosk/sessions/{id}/activity',
+    summary: 'Record patient activity and reset the inactivity window.',
+    tag: 'kiosk',
+    status: 'implemented',
+    phase: '3',
+    responseSchema: 'KioskSession',
+  },
+  {
+    method: 'post',
+    path: '/kiosk/sessions/{id}/language',
+    summary: 'Record the selected language. Only clinically reviewed languages are accepted.',
+    tag: 'kiosk',
+    status: 'implemented',
+    phase: '3',
+    requestSchema: 'SelectLanguageRequest',
+    responseSchema: 'KioskSession',
+  },
+  {
+    method: 'post',
+    path: '/kiosk/sessions/{id}/end',
+    summary: 'End a session. Requires the client to attest that it wiped its state.',
+    tag: 'kiosk',
+    status: 'implemented',
+    phase: '3',
+    requestSchema: 'EndKioskSessionRequest',
+    responseSchema: 'EndKioskSessionResponse',
   },
   {
     method: 'post',
@@ -248,6 +303,18 @@ function buildOperation(spec: EndpointSpec): unknown {
       in: 'path',
       required: true,
       schema: { type: 'string', format: 'uuid' },
+    });
+  }
+
+  if (spec.tag === 'kiosk' || spec.tag === 'arrival') {
+    parameters.push({
+      name: KIOSK_DEVICE_HEADER,
+      in: 'header',
+      required: true,
+      description:
+        'Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — ' +
+        'Phase 15 adds mutual-TLS device certificates.',
+      schema: { type: 'string' },
     });
   }
 

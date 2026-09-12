@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { API_BASE_PATH } from '@medikiosk/api-contracts';
 import { AppModule } from './app.module';
+import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { assertProductionAdapters, loadEnv } from './config/env';
 
 async function bootstrap(): Promise<void> {
@@ -19,6 +20,10 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(API_BASE_PATH.replace(/^\//, ''), {
     exclude: ['health', 'health/ready'],
   });
+  // Every failure leaves through one filter, so no stack trace, SQL text or constraint
+  // name can reach a kiosk screen standing in a public corridor.
+  app.useGlobalFilters(new DomainExceptionFilter());
+
   // No class-validator pipe: the Zod schemas in @medikiosk/api-contracts are the single
   // source of truth for request shape, and a second validation mechanism would let the
   // published contract and the accepted payload drift apart.

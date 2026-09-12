@@ -6,6 +6,7 @@ import { ConsentRepository } from './consent/consent.repository';
 import { QrNonceRepository } from './arrival/qr-nonce.repository';
 import { TokenRequestRepository } from './arrival/token-request.repository';
 import { DbModule } from './db/db.module';
+import { KioskModule } from './kiosk/kiosk.module';
 import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 
@@ -19,6 +20,7 @@ import { HealthModule } from './health/health.module';
     }),
     DbModule,
     HealthModule,
+    KioskModule,
   ],
   // Phase 2 exposes the repositories only; the controllers that use them arrive with
   // their own phases (consent in 4, arrival in 6, tokens in 7).

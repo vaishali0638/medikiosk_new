@@ -1,113 +1,48 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'theme/accessibility_settings.dart';
-import 'theme/design_tokens.dart';
-import 'theme/mk_theme.dart';
-import 'widgets/mk_button.dart';
-import 'widgets/mk_screen.dart';
+import 'api/api_client.dart';
+import 'app.dart';
+import 'platform/kiosk_lock.dart';
+import 'session/secure_wipe.dart';
+
+/// Backend base URL and device code come from the build, never from source.
+/// Supplied at build time:
+///   flutter build apk --dart-define=MEDIKIOSK_API_BASE_URL=https://... \
+///                     --dart-define=MEDIKIOSK_DEVICE_CODE=MK-OPD-03
+const String _apiBaseUrl = String.fromEnvironment(
+  'MEDIKIOSK_API_BASE_URL',
+  defaultValue: 'http://10.0.2.2:3000',
+);
+const String _deviceCode = String.fromEnvironment(
+  'MEDIKIOSK_DEVICE_CODE',
+  defaultValue: 'MK-OPD-01',
+);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Kiosks are fixed-orientation landscape or portrait per hardware; locking here
-  // prevents a rotation from re-laying out mid-answer. Phase 3 reads this from config.
+
+  // Kiosks are mounted in a fixed orientation. Locking it stops a knock or a rotation
+  // from re-laying out the screen mid-answer.
   unawaited(
-    SystemChrome.setPreferredOrientations(<DeviceOrientation>[
-      DeviceOrientation.portraitUp,
-    ]),
+    SystemChrome.setPreferredOrientations(<DeviceOrientation>[DeviceOrientation.portraitUp]),
   );
-  runApp(const MediKioskApp());
-}
 
-/// Application root.
-///
-/// PHASE 1 SCOPE: theme, accessibility scope and the reusable component set only.
-/// Phase 3 replaces the placeholder below with the real kiosk shell — home screen,
-/// language selection, exit confirmation, inactivity timeout, error and offline
-/// states — plus session lifecycle and lock-task enforcement.
-class MediKioskApp extends StatefulWidget {
-  const MediKioskApp({super.key});
+  // Hide the status and navigation bars. This is presentation only — it is not a security
+  // control, and it is not what keeps the patient inside the app. Lock-task mode does that.
+  unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
 
-  @override
-  State<MediKioskApp> createState() => _MediKioskAppState();
-}
-
-class _MediKioskAppState extends State<MediKioskApp> {
-  AccessibilitySettings _settings = const AccessibilitySettings();
-
-  void _update(AccessibilitySettings next) => setState(() => _settings = next);
-
-  @override
-  Widget build(BuildContext context) {
-    return AccessibilityScope(
-      settings: _settings,
-      child: MaterialApp(
-        title: 'MediKiosk',
-        debugShowCheckedModeBanner: false,
-        theme: MkTheme.build(
-          highContrast: _settings.highContrast,
-          textScale: _settings.textScale,
-        ),
-        home: _FoundationPlaceholder(
-          settings: _settings,
-          onSettingsChanged: _update,
-        ),
-      ),
-    );
-  }
-}
-
-/// Temporary screen proving the theme, tokens and components render.
-/// Deleted in Phase 3 when the real home screen lands.
-class _FoundationPlaceholder extends StatelessWidget {
-  const _FoundationPlaceholder({
-    required this.settings,
-    required this.onSettingsChanged,
-  });
-
-  final AccessibilitySettings settings;
-  final ValueChanged<AccessibilitySettings> onSettingsChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return MkScreen(
-      title: 'MediKiosk',
-      subtitle: 'Prepare your hospital visit',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(
-            'Foundation build. The patient workflow is not implemented yet.',
-            style: MkType.body.toTextStyle(
-              color: MkColors.neutralText,
-              scale: settings.textScale,
-            ),
-          ),
-          const SizedBox(height: MkSpacing.lg),
-          MkButton(
-            label: 'Large Text',
-            selected: settings.largeText,
-            onPressed: () => onSettingsChanged(
-              settings.copyWith(largeText: !settings.largeText),
-            ),
-          ),
-          const SizedBox(height: MkSpacing.md),
-          MkButton(
-            label: 'High Contrast',
-            selected: settings.highContrast,
-            onPressed: () => onSettingsChanged(
-              settings.copyWith(highContrast: !settings.highContrast),
-            ),
-          ),
-        ],
-      ),
-      primaryAction: const MkButton(
-        label: 'Continue',
-        emphasis: MkButtonEmphasis.primary,
-        onPressed: null,
-      ),
-    );
-  }
+  runApp(
+    KioskApp(
+      api: ApiClient(baseUrl: _apiBaseUrl, kioskDeviceCode: _deviceCode),
+      // Only Android provides real lock-down. A desktop or iOS debug build used for
+      // design review reports itself as unlocked rather than pretending otherwise.
+      kioskLock: Platform.isAndroid ? const AndroidKioskLock() : const UnlockedKioskLock(),
+      wipeBuilder: (List<VoidCallback> clearers) =>
+          DeviceSecureWipe(uiStateClearers: clearers),
+    ),
+  );
 }
