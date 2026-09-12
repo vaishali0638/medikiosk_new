@@ -51,10 +51,8 @@ jobs:
         with:
           channel: stable
           flutter-version-file: apps/kiosk_flutter/pubspec.yaml
-      # The Gradle scaffolding is generated, not committed. `flutter create` overwrites
-      # the templated Android files, so the MediKiosk ones are restored afterwards.
-      - run: flutter create --platforms=android --org org.medikiosk --project-name medikiosk_kiosk .
-      - run: git checkout -- android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin android/app/src/main/res/xml
+      # android/ is committed, so there is no create step: `flutter create` would
+      # overwrite the lock-task activity and the manifest that make this a kiosk.
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test

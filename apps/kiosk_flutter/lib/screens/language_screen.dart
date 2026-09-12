@@ -79,7 +79,7 @@ class LanguageScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: MkSpacing.xl),
-          Divider(color: MkColors.border, height: MkSpacing.xl),
+          const Divider(color: MkColors.border, height: MkSpacing.xl),
           _AccessibilityToggle(
             label: strings['language.audioGuidance'],
             icon: Icons.volume_up,

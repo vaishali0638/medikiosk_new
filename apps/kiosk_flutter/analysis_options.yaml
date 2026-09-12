@@ -16,6 +16,7 @@ analyzer:
   exclude:
     - build/**
     - lib/theme/design_tokens.dart # generated from packages/design_tokens
+    - android/**
 
 linter:
   rules:

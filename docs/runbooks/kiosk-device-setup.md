@@ -21,15 +21,12 @@ previous patient's screen as a recents thumbnail.
 
 ## Build
 
+Requires Flutter 3.27 or newer. `android/` is committed — do not run `flutter create`
+here, as it would overwrite the lock-task activity, the device-admin receiver, the `HOME`
+intent filter and the backup rules with its defaults.
+
 ```bash
 cd apps/kiosk_flutter
-
-# The Gradle scaffolding is generated, not committed. Run this once on a fresh clone.
-flutter create --platforms=android --org org.medikiosk --project-name medikiosk_kiosk .
-
-# `flutter create` overwrites the templated Android files, so restore the MediKiosk ones.
-git checkout -- android/app/src/main/AndroidManifest.xml android/app/src/main/kotlin android/app/src/main/res/xml
-
 flutter pub get
 flutter build apk --release \
   --dart-define=MEDIKIOSK_API_BASE_URL=https://medikiosk.hospital.internal \

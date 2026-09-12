@@ -48,6 +48,22 @@ class ConsentScreen extends StatelessWidget {
 
     return MkScreen(
       title: notice.title,
+      // Both decisions are pinned below the scrollable summary. Pinning only Agree would
+      // let Decline scroll out of view on a shorter screen, which is the nudge this
+      // design exists to avoid: consent that has been nudged is not freely given.
+      primaryAction: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          MkButton(
+            label: strings['consent.agree'],
+            emphasis: MkButtonEmphasis.primary,
+            onPressed: onAgree,
+          ),
+          const SizedBox(height: MkSpacing.md),
+          MkButton(label: strings['consent.decline'], onPressed: onDecline),
+        ],
+      ),
       exitAction: MkButton(
         label: strings['common.exit'],
         emphasis: MkButtonEmphasis.quiet,
@@ -120,18 +136,6 @@ class ConsentScreen extends StatelessWidget {
             label: strings['consent.readFullNotice'],
             icon: Icons.article_outlined,
             onPressed: onReadFullNotice,
-          ),
-          const SizedBox(height: MkSpacing.xl),
-          MkButton(
-            label: strings['consent.agree'],
-            emphasis: MkButtonEmphasis.primary,
-            onPressed: onAgree,
-          ),
-          const SizedBox(height: MkSpacing.md),
-          // Same size and prominence as Agree. A quieter decline is a nudge.
-          MkButton(
-            label: strings['consent.decline'],
-            onPressed: onDecline,
           ),
           const SizedBox(height: MkSpacing.lg),
           Text(

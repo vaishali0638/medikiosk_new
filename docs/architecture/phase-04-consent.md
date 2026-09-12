@@ -95,8 +95,8 @@ the audit trail would have been wrong. It now reports `CONSENT_EXPIRED`.
 
 ## Known limitations
 
-- **The Flutter code has still never been compiled or run.** Roughly 120 widget and unit
-  tests are written and unverified across Phases 3 and 4.
+- Flutter now compiles and its 150 tests pass; see `docs/architecture/flutter-verification.md`
+  for the four defects that surfaced the first time it was actually run.
 - **The seeded consent notices are placeholders** and are not lawful to show a real
   patient. They require hospital legal and clinical approval through the governance
   console, which is Phase 14.

@@ -94,6 +94,24 @@ void main() {
     expect(decline.width, agree.width);
   });
 
+  testWidgets('keeps both decisions reachable on a short screen', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1024, 500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    int agreed = 0;
+    int declined = 0;
+    await pump(tester, onAgree: () => agreed += 1, onDecline: () => declined += 1);
+
+    // Both are pinned below the scrollable summary. If only Agree stayed visible, the
+    // screen would be nudging the patient towards agreeing.
+    await tester.tap(find.text('Agree and Continue'));
+    await tester.tap(find.text('Do not agree'));
+    await tester.pumpAndSettle();
+    expect(agreed, 1);
+    expect(declined, 1);
+  });
+
   testWidgets('shows the notice version, so the artefact can be traced', (
     WidgetTester tester,
   ) async {
@@ -150,7 +168,7 @@ void main() {
     final SemanticsHandle handle = tester.ensureSemantics();
     await pump(tester);
     expect(
-      tester.getSemantics(find.text('Privacy and consent')).hasFlag(SemanticsFlag.isHeader),
+      tester.getSemantics(find.text('Privacy and consent')).flagsCollection.isHeader,
       isTrue,
     );
     handle.dispose();

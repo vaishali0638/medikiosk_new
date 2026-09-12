@@ -86,8 +86,8 @@ walkthrough, not by a test; a test now pins it.
 
 ## Known limitations
 
-- **The Flutter code has still never been compiled or run.** Roughly 145 widget and unit
-  tests are now written and unverified across Phases 3–5.
+- Flutter now compiles and its 150 tests pass; see `docs/architecture/flutter-verification.md`
+  for the four defects that surfaced the first time it was actually run.
 - **Appointment QR and ABHA both refuse.** Each needs an external adapter the hospital must
   supply — an appointment QR is signed by the HIS, ABHA requires ABDM onboarding. Returning
   nothing is the honest behaviour; a stub that resolved a patient would be inventing identity.

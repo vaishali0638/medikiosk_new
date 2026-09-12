@@ -108,10 +108,31 @@ void main() {
     }
   });
 
+  testWidgets('does not clip its options on a short screen', (WidgetTester tester) async {
+    // A landscape wall mount is short. Overflowing here would put the last options off
+    // the bottom of the glass where nobody can reach them.
+    tester.view.physicalSize = const Size(1024, 500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpHome(tester);
+    expect(tester.takeException(), isNull);
+    expect(find.byType(MkButton), findsNWidgets(5));
+  });
+
+  testWidgets('does not clip its options with Large Text on', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 700);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpHome(tester, settings: const AccessibilitySettings(largeText: true));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('marks the title as a header for screen readers', (WidgetTester tester) async {
     final SemanticsHandle handle = tester.ensureSemantics();
     await pumpHome(tester);
-    expect(tester.getSemantics(find.text('MediKiosk')).hasFlag(SemanticsFlag.isHeader), isTrue);
+    expect(tester.getSemantics(find.text('MediKiosk')).flagsCollection.isHeader, isTrue);
     handle.dispose();
   });
 }

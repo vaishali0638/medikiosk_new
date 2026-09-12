@@ -20,12 +20,6 @@ void main() {
       _host(
         MkScreen(
           title: 'What brings you today?',
-          child: Column(
-            children: List<Widget>.generate(
-              40,
-              (int i) => SizedBox(height: 80, child: Text('Option $i')),
-            ),
-          ),
           primaryAction: MkButton(
             label: 'Continue',
             emphasis: MkButtonEmphasis.primary,
@@ -35,6 +29,12 @@ void main() {
             label: 'Exit',
             emphasis: MkButtonEmphasis.quiet,
             onPressed: () {},
+          ),
+          child: Column(
+            children: List<Widget>.generate(
+              40,
+              (int i) => SizedBox(height: 80, child: Text('Option $i')),
+            ),
           ),
         ),
       ),
@@ -53,7 +53,7 @@ void main() {
     );
 
     final SemanticsNode node = tester.getSemantics(find.text('Privacy and consent'));
-    expect(node.hasFlag(SemanticsFlag.isHeader), isTrue);
+    expect(node.flagsCollection.isHeader, isTrue);
     handle.dispose();
   });
 }

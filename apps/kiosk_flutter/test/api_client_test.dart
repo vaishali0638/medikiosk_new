@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:medikiosk_kiosk/api/api_client.dart';
 import 'package:medikiosk_kiosk/api/api_exception.dart';
 
@@ -109,6 +112,37 @@ void main() {
       } on ApiException catch (error) {
         expect(error.correlationId, isNotNull);
       }
+    });
+  });
+
+  group('character encoding', () {
+    test('reads Devanagari and Tamil correctly', () async {
+      // http.Response.body falls back to latin1 when the server omits a charset, which
+      // mangles or throws on these scripts. The client decodes the bytes as UTF-8 itself.
+      final FakeApi api = FakeApi();
+      api.onJson('/v1/consents/notice', <String, dynamic>{
+        'title': 'गोपनीयता और सहमति',
+        'label': 'தமிழ்',
+      });
+
+      final Map<String, dynamic> res = await api.build().get('/v1/consents/notice');
+      expect(res['title'], 'गोपनीयता और सहमति');
+      expect(res['label'], 'தமிழ்');
+    });
+
+    test('reads a response that omits the charset entirely', () async {
+      final FakeApi api = FakeApi();
+      // No content-type at all — the byte-level decode must still be UTF-8.
+      api.on(
+        '/v1/consents/notice',
+        (_) => http.Response.bytes(
+          utf8.encode(jsonEncode(<String, dynamic>{'title': 'हिन्दी'})),
+          200,
+        ),
+      );
+
+      final Map<String, dynamic> res = await api.build().get('/v1/consents/notice');
+      expect(res['title'], 'हिन्दी');
     });
   });
 

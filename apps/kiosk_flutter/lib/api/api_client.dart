@@ -75,9 +75,12 @@ class ApiClient {
 
     Map<String, dynamic> decoded;
     try {
-      decoded = response.body.isEmpty
+      // Decode the BYTES as UTF-8 rather than reading `response.body`, which falls back
+      // to latin1 when the server omits a charset from its content-type. Consent notices
+      // and language labels are Devanagari and Tamil; latin1 would mangle them, or throw.
+      decoded = response.bodyBytes.isEmpty
           ? <String, dynamic>{}
-          : jsonDecode(response.body) as Map<String, dynamic>;
+          : jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } on FormatException {
       throw ApiException(
         code: 'INTERNAL_ERROR',

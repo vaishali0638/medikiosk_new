@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'api/api_client.dart';
 import 'api/api_exception.dart';

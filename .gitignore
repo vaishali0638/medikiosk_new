@@ -34,10 +34,14 @@ logs/
 # OS / editor
 .DS_Store
 .idea/
+*.iml
 .vscode/*
 !.vscode/extensions.json
 
 # Flutter / Dart
+# android/ IS committed: it carries the lock-task MainActivity, the device-admin
+# receiver, the HOME intent filter and the backup rules. Regenerating it would silently
+# drop every one of those, which is how a kiosk stops being a kiosk.
 apps/kiosk_flutter/.dart_tool/
 apps/kiosk_flutter/.flutter-plugins
 apps/kiosk_flutter/.flutter-plugins-dependencies

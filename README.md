@@ -61,11 +61,10 @@ npm run seed    -w @medikiosk/core-api
 npm run start:dev -w @medikiosk/core-api
 ```
 
-Kiosk client — the Android host project is generated rather than committed, so run once:
+Kiosk client (Flutter 3.27+):
 
 ```bash
 cd apps/kiosk_flutter
-flutter create --platforms=android --org org.medikiosk --project-name medikiosk_kiosk .
 flutter pub get && flutter analyze && flutter test
 ```
 

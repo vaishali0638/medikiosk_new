@@ -48,75 +48,80 @@ class HomeScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 720),
             child: Padding(
               padding: const EdgeInsets.all(MkSpacing.xl),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      strings['app.title'],
+              // Scrolls only when the content does not fit. On a tall portrait kiosk it
+              // never does, but a landscape mount or Large Text must not clip the bottom
+              // options off the screen where nobody can reach them.
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        strings['app.title'],
+                        textAlign: TextAlign.center,
+                        style: MkType.display.toTextStyle(
+                          color: MkColors.darkBlue,
+                          scale: a11y.textScale,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: MkSpacing.sm),
+                    Text(
+                      strings['app.tagline'],
                       textAlign: TextAlign.center,
-                      style: MkType.display.toTextStyle(
-                        color: MkColors.darkBlue,
+                      style: MkType.body.toTextStyle(
+                        color: MkColors.mutedText,
                         scale: a11y.textScale,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: MkSpacing.sm),
-                  Text(
-                    strings['app.tagline'],
-                    textAlign: TextAlign.center,
-                    style: MkType.body.toTextStyle(
-                      color: MkColors.mutedText,
-                      scale: a11y.textScale,
-                    ),
-                  ),
-                  const SizedBox(height: MkSpacing.xxl),
+                    const SizedBox(height: MkSpacing.xxl),
 
-                  // Mobile QR first: patients who pre-checked in at home are the ones the
-                  // queue most needs to move through quickly.
-                  MkButton(
-                    label: strings['home.checkInWithMobileQr'],
-                    emphasis: MkButtonEmphasis.primary,
-                    icon: Icons.qr_code_scanner,
-                    onPressed: onCheckInWithMobileQr,
-                  ),
-                  const SizedBox(height: MkSpacing.md),
-                  MkButton(
-                    label: strings['home.newRegistration'],
-                    icon: Icons.person_add_alt,
-                    onPressed: onNewRegistration,
-                  ),
-                  const SizedBox(height: MkSpacing.md),
-                  MkButton(
-                    label: strings['home.existingPatientCheckIn'],
-                    icon: Icons.badge_outlined,
-                    onPressed: onExistingPatientCheckIn,
-                  ),
-                  const SizedBox(height: MkSpacing.xl),
-                  MkButton(
-                    label: strings['home.selectLanguage'],
-                    icon: Icons.language,
-                    onPressed: onSelectLanguage,
-                  ),
-                  const SizedBox(height: MkSpacing.md),
-                  MkButton(
-                    label: strings['home.audioGuidance'],
-                    icon: Icons.volume_up,
-                    selected: a11y.audioGuidance,
-                    onPressed: onToggleAudioGuidance,
-                  ),
-                  const SizedBox(height: MkSpacing.xl),
-                  Text(
-                    strings['home.touchToBegin'],
-                    textAlign: TextAlign.center,
-                    style: MkType.caption.toTextStyle(
-                      color: MkColors.mutedText,
-                      scale: a11y.textScale,
+                    // Mobile QR first: patients who pre-checked in at home are the ones
+                    // the queue most needs to move through quickly.
+                    MkButton(
+                      label: strings['home.checkInWithMobileQr'],
+                      emphasis: MkButtonEmphasis.primary,
+                      icon: Icons.qr_code_scanner,
+                      onPressed: onCheckInWithMobileQr,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: MkSpacing.md),
+                    MkButton(
+                      label: strings['home.newRegistration'],
+                      icon: Icons.person_add_alt,
+                      onPressed: onNewRegistration,
+                    ),
+                    const SizedBox(height: MkSpacing.md),
+                    MkButton(
+                      label: strings['home.existingPatientCheckIn'],
+                      icon: Icons.badge_outlined,
+                      onPressed: onExistingPatientCheckIn,
+                    ),
+                    const SizedBox(height: MkSpacing.xl),
+                    MkButton(
+                      label: strings['home.selectLanguage'],
+                      icon: Icons.language,
+                      onPressed: onSelectLanguage,
+                    ),
+                    const SizedBox(height: MkSpacing.md),
+                    MkButton(
+                      label: strings['home.audioGuidance'],
+                      icon: Icons.volume_up,
+                      selected: a11y.audioGuidance,
+                      onPressed: onToggleAudioGuidance,
+                    ),
+                    const SizedBox(height: MkSpacing.xl),
+                    Text(
+                      strings['home.touchToBegin'],
+                      textAlign: TextAlign.center,
+                      style: MkType.caption.toTextStyle(
+                        color: MkColors.mutedText,
+                        scale: a11y.textScale,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

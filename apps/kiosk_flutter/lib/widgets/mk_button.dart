@@ -52,8 +52,15 @@ class MkButton extends StatelessWidget {
     final AccessibilitySettings a11y = AccessibilityScope.of(context);
     final bool enabled = onPressed != null;
 
-    final (Color background, Color foreground, Color? outline) = switch (emphasis) {
-      MkButtonEmphasis.primary => (MkColors.actionOrange, MkColors.background, null),
+    // Every emphasis carries a border of the same width — transparent for primary — so
+    // buttons of different emphasis are exactly the same size. On the consent screen
+    // Agree and Decline must be equally weighted, and a 4px height difference is a nudge.
+    final (Color background, Color foreground, Color outline) = switch (emphasis) {
+      MkButtonEmphasis.primary => (
+          MkColors.actionOrange,
+          MkColors.background,
+          MkColors.actionOrange,
+        ),
       MkButtonEmphasis.secondary => selected
           ? (MkColors.lightOrange, MkColors.darkBlue, MkColors.actionOrange)
           : (MkColors.background, MkColors.primaryBlue, MkColors.primaryBlue),
@@ -88,9 +95,7 @@ class MkButton extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(MkRadius.lg),
-                border: outline == null
-                    ? null
-                    : Border.all(color: enabled ? outline : MkColors.border, width: 2),
+                border: Border.all(color: enabled ? outline : MkColors.border, width: 2),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

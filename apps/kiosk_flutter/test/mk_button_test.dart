@@ -42,7 +42,7 @@ void main() {
 
     final SemanticsNode node = tester.getSemantics(find.byType(MkButton));
     expect(node.label, contains('Continue'));
-    expect(node.hasFlag(SemanticsFlag.isButton), isTrue);
+    expect(node.flagsCollection.isButton, isTrue);
     handle.dispose();
   });
 

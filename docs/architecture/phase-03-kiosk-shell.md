@@ -109,10 +109,8 @@ it is now disabled for `services/core_api/src`.
 
 ## Known limitations
 
-- **The Flutter code has never been compiled or run.** `flutter analyze` and `flutter test`
-  have not been executed because the SDK is not installed on this machine. Roughly 95
-  widget and unit tests are written and unverified. Treat the Dart in this phase as
-  unreviewed until those two commands pass.
+- Flutter now compiles and its 150 tests pass; see `docs/architecture/flutter-verification.md`
+  for the four defects that surfaced the first time it was actually run.
 - **`android/` has no Gradle scaffolding.** `flutter create` must be run once, then the
   committed Android sources restored from git. The README and runbook both say so.
 - **Lock-down is untested on hardware.** Every claim about lock-task mode, `FLAG_SECURE`

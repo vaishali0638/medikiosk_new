@@ -30,7 +30,17 @@ class FakeApi {
   }
 
   void onJson(String pathSuffix, Map<String, dynamic> body, {int status = 200}) {
-    on(pathSuffix, (_) => http.Response(jsonEncode(body), status));
+    // The charset matters: http.Response defaults to latin1 without it, which cannot
+    // encode the Devanagari and Tamil this API actually returns. A real Nest server sends
+    // `application/json; charset=utf-8`, so the fake does too.
+    on(
+      pathSuffix,
+      (_) => http.Response(
+        jsonEncode(body),
+        status,
+        headers: <String, String>{'content-type': 'application/json; charset=utf-8'},
+      ),
+    );
   }
 
   void failNetwork(String pathSuffix) => _networkFailures.add(pathSuffix);
@@ -57,14 +67,18 @@ class FakeApi {
 
       for (final String suffix in _networkFailures) {
         if (recorded.path.endsWith(suffix)) {
-          throw const http.ClientException('connection refused');
+          throw http.ClientException('connection refused');
         }
       }
       for (final MapEntry<String, http.Response Function(RecordedRequest)> entry
           in _routes.entries) {
         if (recorded.path.endsWith(entry.key)) return entry.value(recorded);
       }
-      return http.Response(jsonEncode(<String, dynamic>{'code': 'INTERNAL_ERROR'}), 500);
+      return http.Response(
+        jsonEncode(<String, dynamic>{'code': 'INTERNAL_ERROR'}),
+        500,
+        headers: <String, String>{'content-type': 'application/json; charset=utf-8'},
+      );
     });
 
     return ApiClient(
