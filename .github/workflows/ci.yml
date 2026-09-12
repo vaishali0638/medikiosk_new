@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Node — lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  forbidden_options:
+    name: Forbidden-option scan
+    runs-on: ubuntu-latest
+    # Runs on its own so a violation is unmistakable in the checks list: these options
+    # are banned for clinical-safety and governance reasons, not style.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run scan:forbidden
+
+  flutter:
+    name: Flutter — analyze and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/kiosk_flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  design_tokens_in_sync:
+    name: Generated design tokens are in sync
+    runs-on: ubuntu-latest
+    # The Dart theme is generated from the TypeScript tokens. If someone edits the
+    # generated file by hand the two surfaces drift apart, so CI regenerates and diffs.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run tokens:build
+      - run: git diff --exit-code -- apps/kiosk_flutter/lib/theme/design_tokens.dart
+
+  migrations:
+    name: Migrations run from an empty database
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: medikiosk
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: medikiosk_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Phase 2 adds the migration runner. Until then this job only proves the database
+      # service is reachable — it does not pretend to have run migrations.
+      - name: Database reachable
+        run: node -e "require('net').connect(5432,'localhost').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"

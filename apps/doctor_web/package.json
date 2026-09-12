@@ -1,0 +1,6 @@
+{
+  "name": "@medikiosk/doctor-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Doctor dashboard (Next.js). Phase 13."
+}

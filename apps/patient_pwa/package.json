@@ -1,0 +1,6 @@
+{
+  "name": "@medikiosk/patient-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Patient pre-check-in PWA (Next.js). Phase 6."
+}

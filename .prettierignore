@@ -1,0 +1,7 @@
+dist
+build
+coverage
+.next
+docs/api/openapi.json
+apps/kiosk_flutter
+services/ai_worker

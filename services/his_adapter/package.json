@@ -1,0 +1,16 @@
+{
+  "name": "@medikiosk/his-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HIS/queue adapter interface and local sandbox implementation",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@medikiosk/api-contracts": "0.1.0"
+  }
+}

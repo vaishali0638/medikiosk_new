@@ -1,0 +1,113 @@
+# MediKiosk
+
+Patient-intake kiosk platform for Indian hospital OPDs, starting with government AYUSH
+hospitals. Patients complete language selection, consent, identification, clinical intake and
+document upload at a locked-down kiosk (or ahead of time on their phone), and the **hospital
+HIS/queue** — never MediKiosk — issues the final token.
+
+> **Not production ready.** This repository is at Phase 1 of an 18-phase build. See
+> [Build status](#build-status).
+
+## What this is not
+
+MediKiosk is an intake and documentation-support system. It does not diagnose, does not
+prescribe, does not select an AYUSH remedy, and does not modify a verified clinical record.
+Every piece of derived information carries a provenance label, and a clinician must confirm
+anything before it reaches the EMR.
+
+- Patient-facing label: **Your information for the doctor**
+- Doctor-facing label: **AI-assisted pre-consultation draft — not verified**
+
+## Repository layout
+
+```
+apps/kiosk_flutter     Flutter kiosk client (Android 12+, dedicated-device mode)
+apps/patient_pwa       Patient pre-check-in PWA            [placeholder — Phase 6]
+apps/doctor_web        Doctor dashboard                    [placeholder — Phase 13]
+apps/governance_web    Clinical governance console         [placeholder — Phase 14]
+services/core_api      NestJS modular monolith
+services/his_adapter   HIS/queue adapter + sandbox         [interface only — Phase 7]
+services/ai_worker     Python ASR/OCR/summary workers      [placeholder — Phase 10/11]
+packages/api_contracts        Shared typed contracts
+packages/design_tokens        Canonical theme (generates Dart + CSS)
+packages/questionnaire_schema Versioned questionnaire schema
+packages/terminology          Provenance labels and value sets
+infra/docker           Local development stack
+infra/migrations       PostgreSQL migrations               [Phase 2]
+tools                  Repository guards (forbidden-option scan)
+docs                   Architecture, API, security, runbooks
+tests                  Contract, integration and end-to-end journeys
+```
+
+## Local setup
+
+Requires Node 22+ (see `.nvmrc`), Docker, and Flutter 3.27+ for the kiosk client.
+
+```bash
+npm install
+cp infra/docker/.env.example infra/docker/.env   # then edit the placeholder passwords
+npm run docker:up                                 # Postgres 16, Redis, MinIO, core_api
+curl http://localhost:3000/health
+```
+
+Kiosk client — the Android host project is generated rather than committed, so run once:
+
+```bash
+cd apps/kiosk_flutter
+flutter create --platforms=android --org org.medikiosk --project-name medikiosk_kiosk .
+flutter pub get && flutter analyze && flutter test
+```
+
+## Checks
+
+```bash
+npm run verify          # format, lint, typecheck, forbidden-option scan, tests
+npm run scan:forbidden  # banned kiosk options, on its own
+npm run tokens:build    # regenerate the Dart and CSS themes from the TS tokens
+```
+
+`npm run verify` does not cover the Flutter client — run `flutter analyze && flutter test`
+separately, as CI does.
+
+## Design tokens
+
+`packages/design_tokens/src/tokens.ts` is the single source of truth for the theme.
+`apps/kiosk_flutter/lib/theme/design_tokens.dart` and `packages/design_tokens/dist/tokens.css`
+are **generated**; CI fails if they drift. Colour roles are a safety rule, not a style
+preference:
+
+| Colour                     | Role                                                                     |
+| -------------------------- | ------------------------------------------------------------------------ |
+| Blue `#1565C0` / `#0D47A1` | Navigation and information                                               |
+| Orange `#F57C00`           | The single primary action per screen, and selected states                |
+| Red `#C62828`              | Internal/system alert status only — **never** a patient-facing diagnosis |
+
+## Forbidden kiosk options
+
+These strings are banned from patient-facing UI and enforced by `npm run scan:forbidden` in
+CI. Each one either routes around hospital authority or advertises a support channel the
+deployment does not provide:
+
+`Staff Help` · `Get Staff Help` · `Urgent Help` · `I need urgent help` · `Generate New QR` ·
+`Enter hospital reference` · `Register without phone` · `Enter token` · `Approved ABHA Flow`
+
+## Build status
+
+| Phase | Scope                                                                                        | Status                       |
+| ----- | -------------------------------------------------------------------------------------------- | ---------------------------- |
+| 0     | Discovery, clinical governance, hospital sign-off                                            | Not started — organisational |
+| **1** | **Repo, design system, CI, health check**                                                    | **Complete**                 |
+| 2     | Database, contracts, state machines                                                          | Next                         |
+| 3     | Kiosk shell and session security                                                             | Not started                  |
+| 4     | Language, accessibility, consent                                                             | Not started                  |
+| 5     | Identity and patient matching                                                                | Not started                  |
+| 6     | Mobile pre-check-in and signed QR                                                            | Not started                  |
+| 7     | HIS/queue token adapter                                                                      | Interface stub only          |
+| 8–18  | Clinical core, AYUSH, OCR, AI, follow-up, doctor, governance, hardening, ops, pilot, release | Not started                  |
+
+Every unbuilt capability is behind a feature flag that defaults to off, and a disabled
+feature must not appear in any UI.
+
+## Licence
+
+UNLICENSED — internal project.

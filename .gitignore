@@ -1,0 +1,57 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# test / coverage
+coverage/
+.nyc_output/
+
+# env — never commit real secrets, only *.example files
+.env
+.env.*
+!.env.example
+!*.env.example
+
+# secrets / keys
+*.pem
+*.key
+!**/testdata/*.key
+secrets/
+
+# logs
+*.log
+npm-debug.log*
+logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Flutter / Dart
+apps/kiosk_flutter/.dart_tool/
+apps/kiosk_flutter/.flutter-plugins
+apps/kiosk_flutter/.flutter-plugins-dependencies
+apps/kiosk_flutter/build/
+apps/kiosk_flutter/ios/Pods/
+apps/kiosk_flutter/android/.gradle/
+apps/kiosk_flutter/android/local.properties
+apps/kiosk_flutter/pubspec.lock
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# local data volumes
+infra/docker/.data/

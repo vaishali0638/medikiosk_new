@@ -1,0 +1,28 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Null-safety and correctness issues are build failures, not warnings.
+    invalid_assignment: error
+    missing_required_param: error
+    missing_return: error
+    dead_code: error
+    unused_import: error
+    todo: ignore
+  exclude:
+    - build/**
+    - lib/theme/design_tokens.dart # generated from packages/design_tokens
+
+linter:
+  rules:
+    always_declare_return_types: true
+    avoid_print: true # patient data must never reach logcat
+    prefer_const_constructors: true
+    prefer_final_locals: true
+    require_trailing_commas: true
+    unawaited_futures: true
+    use_super_parameters: true

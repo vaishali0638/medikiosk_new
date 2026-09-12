@@ -1,0 +1,9 @@
+{
+  "name": "@medikiosk/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end journey tests: pre-check-in -> QR -> kiosk arrival -> HIS token",
+  "scripts": {
+    "test": "echo \"e2e journey tests land in Phase 6/7\" && exit 0"
+  }
+}

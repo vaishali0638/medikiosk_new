@@ -1,0 +1,12 @@
+{
+  "name": "@medikiosk/tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Repository guard scripts (forbidden-option scan and friends)",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "vitest run",
+    "scan:forbidden": "tsx src/cli.ts"
+  }
+}

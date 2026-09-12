@@ -1,0 +1,6 @@
+{
+  "name": "@medikiosk/governance-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Clinical governance console (Next.js). Phase 14."
+}

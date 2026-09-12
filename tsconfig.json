@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/design_tokens" },
+    { "path": "./packages/api_contracts" },
+    { "path": "./packages/questionnaire_schema" },
+    { "path": "./packages/terminology" },
+    { "path": "./services/his_adapter" },
+    { "path": "./services/core_api" },
+    { "path": "./tools" }
+  ]
+}
