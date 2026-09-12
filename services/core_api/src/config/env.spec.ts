@@ -3,6 +3,8 @@ import { assertProductionAdapters, loadEnv } from './env';
 const baseEnv = {
   DATABASE_URL: 'postgres://user:pass@localhost:5432/medikiosk',
   HIS_BASE_URL: 'https://his.example.org',
+  SMS_ADAPTER: 'unconfigured',
+  OTP_HMAC_SECRET: 'a'.repeat(48),
 };
 
 describe('environment configuration', () => {
@@ -50,6 +52,34 @@ describe('environment configuration', () => {
     } as unknown as NodeJS.ProcessEnv);
     expect(() => assertProductionAdapters(env)).toThrow(/HIS_BASE_URL/);
     expect(() => assertProductionAdapters(env)).toThrow(/DATABASE_URL/);
+  });
+
+  it('refuses to write one-time codes to the log in production', () => {
+    const env = loadEnv({
+      ...baseEnv,
+      NODE_ENV: 'production',
+      HIS_ADAPTER: 'rest',
+      SMS_ADAPTER: 'sandbox',
+    } as unknown as NodeJS.ProcessEnv);
+    // A production log holding live one-time codes is a credential store in disguise.
+    expect(() => assertProductionAdapters(env)).toThrow(/SMS_ADAPTER=sandbox/);
+  });
+
+  it('requires an OTP signing secret in production', () => {
+    const env = loadEnv({
+      DATABASE_URL: baseEnv.DATABASE_URL,
+      HIS_BASE_URL: baseEnv.HIS_BASE_URL,
+      SMS_ADAPTER: 'unconfigured',
+      NODE_ENV: 'production',
+      HIS_ADAPTER: 'rest',
+    } as unknown as NodeJS.ProcessEnv);
+    expect(() => assertProductionAdapters(env)).toThrow(/OTP_HMAC_SECRET/);
+  });
+
+  it('rejects a weak OTP secret', () => {
+    expect(() => loadEnv({ OTP_HMAC_SECRET: 'too-short' } as unknown as NodeJS.ProcessEnv)).toThrow(
+      /Invalid environment configuration/,
+    );
   });
 
   it('accepts a fully configured production environment', () => {

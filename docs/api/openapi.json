@@ -485,6 +485,345 @@
         ],
         "additionalProperties": false
       },
+      "RequestOtpRequest": {
+        "type": "object",
+        "properties": {
+          "mobile": {
+            "type": "string",
+            "pattern": "^[6-9]\\d{9}$"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "NEW_REGISTRATION",
+              "EXISTING_PATIENT_LOOKUP"
+            ]
+          }
+        },
+        "required": [
+          "mobile",
+          "purpose"
+        ],
+        "additionalProperties": false
+      },
+      "RequestOtpResponse": {
+        "type": "object",
+        "properties": {
+          "verificationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "maskedMobile": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attemptsAllowed": {
+            "type": "integer",
+            "exclusiveMinimum": true,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "verificationId",
+          "maskedMobile",
+          "expiresAt",
+          "attemptsAllowed"
+        ],
+        "additionalProperties": false
+      },
+      "VerifyOtpRequest": {
+        "type": "object",
+        "properties": {
+          "verificationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "verificationId",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "VerifyOtpResponse": {
+        "type": "object",
+        "properties": {
+          "verificationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verified": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "verificationId",
+          "verified"
+        ],
+        "additionalProperties": false
+      },
+      "ResolveIdentityRequest": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "UHID_AND_ENCOUNTER"
+                ]
+              },
+              "uhid": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9/-]+$"
+              },
+              "dateOfBirth": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "yearOfBirth": {
+                "type": "integer",
+                "minimum": 1900,
+                "maximum": 2100
+              }
+            },
+            "required": [
+              "method",
+              "uhid"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "APPOINTMENT_QR"
+                ]
+              },
+              "qrPayload": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "method",
+              "qrPayload"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "MOBILE_OTP"
+                ]
+              },
+              "verificationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "dateOfBirth": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "yearOfBirth": {
+                "type": "integer",
+                "minimum": 1900,
+                "maximum": 2100
+              }
+            },
+            "required": [
+              "method",
+              "verificationId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "ABHA_VERIFIED"
+                ]
+              },
+              "abhaToken": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "method",
+              "abhaToken"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ResolveIdentityResponse": {
+        "type": "object",
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "UHID_AND_ENCOUNTER",
+              "APPOINTMENT_QR",
+              "ABHA_VERIFIED",
+              "MOBILE_OTP"
+            ]
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "MODERATE",
+              "STRONG",
+              "STRONGEST"
+            ]
+          },
+          "masked": {
+            "type": "object",
+            "properties": {
+              "maskedName": {
+                "type": "string"
+              },
+              "maskedMobile": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "maskedName",
+              "maskedMobile"
+            ],
+            "additionalProperties": false
+          },
+          "maskedUhid": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "candidateId",
+          "method",
+          "strength",
+          "masked",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "ConfirmIdentityRequest": {
+        "type": "object",
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isMe": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "candidateId",
+          "isMe"
+        ],
+        "additionalProperties": false
+      },
+      "ConfirmIdentityResponse": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "MODERATE",
+              "STRONG",
+              "STRONGEST"
+            ]
+          }
+        },
+        "required": [
+          "patientId",
+          "strength"
+        ],
+        "additionalProperties": false
+      },
+      "RegisterPatientRequest": {
+        "type": "object",
+        "properties": {
+          "verificationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "sex": {
+            "type": "string",
+            "enum": [
+              "FEMALE",
+              "MALE",
+              "OTHER",
+              "PREFER_NOT_TO_SAY"
+            ]
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "ageYears": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 130
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "verificationId",
+          "name",
+          "sex"
+        ],
+        "additionalProperties": false
+      },
       "CreatePreCheckinRequest": {
         "type": "object",
         "properties": {
@@ -2162,13 +2501,13 @@
         }
       }
     },
-    "/v1/patients/match": {
+    "/v1/identity/otp": {
       "post": {
-        "summary": "Resolve a patient identity. Name alone is never sufficient.",
+        "summary": "Send a one-time code. The response is identical whether or not the number is registered, so the kiosk cannot be used to test which numbers are patients here.",
         "tags": [
           "identity"
         ],
-        "x-status": "not-implemented",
+        "x-status": "implemented",
         "x-phase": "5",
         "parameters": [
           {
@@ -2179,6 +2518,523 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestOtpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/identity/otp/verify": {
+      "post": {
+        "summary": "Verify a one-time code. Attempts are limited, then the code locks.",
+        "tags": [
+          "identity"
+        ],
+        "x-status": "implemented",
+        "x-phase": "5",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyOtpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/identity/resolve": {
+      "post": {
+        "summary": "Resolve a patient. Returns masked details only, and refuses anything that is not exactly one confident match. Name alone is not expressible in the contract.",
+        "tags": [
+          "identity"
+        ],
+        "x-status": "implemented",
+        "x-phase": "5",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIdentityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveIdentityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/identity/confirm": {
+      "post": {
+        "summary": "The patient confirms the masked details shown are their own.",
+        "tags": [
+          "identity"
+        ],
+        "x-status": "implemented",
+        "x-phase": "5",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmIdentityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmIdentityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/identity/register": {
+      "post": {
+        "summary": "Register a new patient by promoting the provisional record consent created.",
+        "tags": [
+          "identity"
+        ],
+        "x-status": "implemented",
+        "x-phase": "5",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPatientRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/patients/match": {
+      "post": {
+        "summary": "Resolve a patient identity. Name alone is never sufficient.",
+        "tags": [
+          "identity"
+        ],
+        "x-status": "not-implemented",
+        "x-phase": "5 (superseded by /identity/resolve)",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
             }
           }
         ],

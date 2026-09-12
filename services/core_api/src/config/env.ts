@@ -22,6 +22,18 @@ export const envSchema = z.object({
   OBJECT_STORE_BUCKET: z.string().min(1).optional(),
 
   /**
+   * SMS gateway. `sandbox` logs the message instead of sending it, which is why
+   * assertProductionAdapters() refuses it in production — a production log holding live
+   * one-time codes would be a credential store in disguise.
+   */
+  SMS_ADAPTER: z.enum(['sandbox', 'unconfigured']).default('sandbox'),
+
+  /** HMAC key for one-time codes. Codes are never stored in plaintext. */
+  OTP_HMAC_SECRET: z.string().min(32).optional(),
+  /** Names the key in use, so the secret can be rotated without invalidating live codes. */
+  OTP_KEY_ID: z.string().min(1).default('dev'),
+
+  /**
    * Which HIS adapter to use. `sandbox` is a local development stand-in and is
    * rejected in production by assertProductionAdapters() below.
    */
@@ -62,6 +74,14 @@ export function assertProductionAdapters(env: Env): void {
   const problems: string[] = [];
   if (env.HIS_ADAPTER === 'sandbox') {
     problems.push('HIS_ADAPTER=sandbox is a development stand-in and cannot run in production');
+  }
+  if (env.SMS_ADAPTER === 'sandbox') {
+    problems.push(
+      'SMS_ADAPTER=sandbox writes one-time codes to the log and cannot run in production',
+    );
+  }
+  if (!env.OTP_HMAC_SECRET) {
+    problems.push('OTP_HMAC_SECRET is required in production');
   }
   if (!env.HIS_BASE_URL) {
     problems.push('HIS_BASE_URL is required in production');

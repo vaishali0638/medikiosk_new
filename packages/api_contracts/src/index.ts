@@ -31,6 +31,7 @@ export * from './errors';
 export * from './consent';
 export * from './consent-notice';
 export * from './patient';
+export * from './identity';
 export * from './precheckin';
 export * from './arrival';
 export * from './kiosk-config';

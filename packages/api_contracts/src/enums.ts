@@ -180,6 +180,17 @@ export const GOVERNANCE_STATES = [
 ] as const;
 export type GovernanceState = (typeof GOVERNANCE_STATES)[number];
 
+/** What a one-time code is being used for. */
+export const OTP_PURPOSES = ['NEW_REGISTRATION', 'EXISTING_PATIENT_LOOKUP'] as const;
+export type OtpPurpose = (typeof OTP_PURPOSES)[number];
+
+/**
+ * One-time code lifecycle. LOCKED is reached by exhausting the attempt allowance and is
+ * terminal: the patient requests a new code rather than getting more guesses at this one.
+ */
+export const OTP_STATES = ['PENDING', 'VERIFIED', 'EXPIRED', 'CONSUMED', 'LOCKED'] as const;
+export type OtpState = (typeof OTP_STATES)[number];
+
 /** Delivery state of an outbound integration message. */
 export const OUTBOX_STATES = [
   'PENDING',
@@ -216,6 +227,8 @@ export const SQL_ENUMS = {
   triage_status_kind: TRIAGE_STATUSES,
   governance_state: GOVERNANCE_STATES,
   outbox_state: OUTBOX_STATES,
+  otp_purpose: OTP_PURPOSES,
+  otp_state: OTP_STATES,
 } as const satisfies Record<string, readonly string[]>;
 
 export type SqlEnumName = keyof typeof SQL_ENUMS;

@@ -31,6 +31,17 @@ import {
 import { consentNoticeSchema } from '../src/consent-notice';
 import { patientMatchRequestSchema, patientMatchResponseSchema } from '../src/patient';
 import {
+  confirmIdentityResponseSchema,
+  confirmIdentitySchema,
+  registerPatientSchema,
+  requestOtpResponseSchema,
+  requestOtpSchema,
+  resolveIdentityResponseSchema,
+  resolveIdentitySchema,
+  verifyOtpResponseSchema,
+  verifyOtpSchema,
+} from '../src/identity';
+import {
   createPreCheckinRequestSchema,
   issueQrResponseSchema,
   preCheckinSchema,
@@ -61,6 +72,15 @@ const schemas: Record<string, ZodTypeAny> = {
   RevokeConsentRequest: revokeConsentRequestSchema,
   PatientMatchRequest: patientMatchRequestSchema,
   PatientMatchResponse: patientMatchResponseSchema,
+  RequestOtpRequest: requestOtpSchema,
+  RequestOtpResponse: requestOtpResponseSchema,
+  VerifyOtpRequest: verifyOtpSchema,
+  VerifyOtpResponse: verifyOtpResponseSchema,
+  ResolveIdentityRequest: resolveIdentitySchema,
+  ResolveIdentityResponse: resolveIdentityResponseSchema,
+  ConfirmIdentityRequest: confirmIdentitySchema,
+  ConfirmIdentityResponse: confirmIdentityResponseSchema,
+  RegisterPatientRequest: registerPatientSchema,
   CreatePreCheckinRequest: createPreCheckinRequestSchema,
   PreCheckin: preCheckinSchema,
   IssueQrResponse: issueQrResponseSchema,
@@ -185,11 +205,64 @@ const endpoints: readonly EndpointSpec[] = [
   },
   {
     method: 'post',
+    path: '/identity/otp',
+    summary:
+      'Send a one-time code. The response is identical whether or not the number is ' +
+      'registered, so the kiosk cannot be used to test which numbers are patients here.',
+    tag: 'identity',
+    status: 'implemented',
+    phase: '5',
+    requestSchema: 'RequestOtpRequest',
+    responseSchema: 'RequestOtpResponse',
+  },
+  {
+    method: 'post',
+    path: '/identity/otp/verify',
+    summary: 'Verify a one-time code. Attempts are limited, then the code locks.',
+    tag: 'identity',
+    status: 'implemented',
+    phase: '5',
+    requestSchema: 'VerifyOtpRequest',
+    responseSchema: 'VerifyOtpResponse',
+  },
+  {
+    method: 'post',
+    path: '/identity/resolve',
+    summary:
+      'Resolve a patient. Returns masked details only, and refuses anything that is not ' +
+      'exactly one confident match. Name alone is not expressible in the contract.',
+    tag: 'identity',
+    status: 'implemented',
+    phase: '5',
+    requestSchema: 'ResolveIdentityRequest',
+    responseSchema: 'ResolveIdentityResponse',
+  },
+  {
+    method: 'post',
+    path: '/identity/confirm',
+    summary: 'The patient confirms the masked details shown are their own.',
+    tag: 'identity',
+    status: 'implemented',
+    phase: '5',
+    requestSchema: 'ConfirmIdentityRequest',
+    responseSchema: 'ConfirmIdentityResponse',
+  },
+  {
+    method: 'post',
+    path: '/identity/register',
+    summary: 'Register a new patient by promoting the provisional record consent created.',
+    tag: 'identity',
+    status: 'implemented',
+    phase: '5',
+    requestSchema: 'RegisterPatientRequest',
+  },
+  {
+    method: 'post',
     path: '/patients/match',
     summary: 'Resolve a patient identity. Name alone is never sufficient.',
     tag: 'identity',
     status: 'not-implemented',
-    phase: '5',
+    phase: '5 (superseded by /identity/resolve)',
     requestSchema: 'PatientMatchRequest',
     responseSchema: 'PatientMatchResponse',
   },
@@ -347,7 +420,12 @@ function buildOperation(spec: EndpointSpec): unknown {
     });
   }
 
-  if (spec.tag === 'kiosk' || spec.tag === 'arrival' || spec.tag === 'consent') {
+  if (
+    spec.tag === 'kiosk' ||
+    spec.tag === 'arrival' ||
+    spec.tag === 'consent' ||
+    spec.tag === 'identity'
+  ) {
     parameters.push({
       name: KIOSK_DEVICE_HEADER,
       in: 'header',

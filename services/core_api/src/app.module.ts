@@ -6,6 +6,7 @@ import { QrNonceRepository } from './arrival/qr-nonce.repository';
 import { TokenRequestRepository } from './arrival/token-request.repository';
 import { DbModule } from './db/db.module';
 import { ConsentModule } from './consent/consent.module';
+import { IdentityModule } from './identity/identity.module';
 import { KioskModule } from './kiosk/kiosk.module';
 import { loadEnv } from './config/env';
 import { HealthModule } from './health/health.module';
@@ -22,6 +23,7 @@ import { HealthModule } from './health/health.module';
     HealthModule,
     KioskModule,
     ConsentModule,
+    IdentityModule,
   ],
   // Arrival repositories still live here; their controllers arrive in Phases 6 and 7.
   providers: [AuditRepository, QrNonceRepository, TokenRequestRepository],

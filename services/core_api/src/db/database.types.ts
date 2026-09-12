@@ -1,5 +1,9 @@
 import type {
   AnswerModality,
+  IdentityMatchStrength,
+  IdentityMethod,
+  OtpPurpose,
+  OtpState,
   AyushSystem,
   ConsentCaptureMethod,
   ConsentDataCategory,
@@ -304,6 +308,41 @@ export interface TriageStatusTable {
   created_at: Generated<Date>;
 }
 
+export interface OtpVerificationTable {
+  id: Generated<string>;
+  hospital_id: string;
+  kiosk_device_id: string | null;
+  purpose: OtpPurpose;
+  mobile: string;
+  code_hash: string;
+  code_key_id: string;
+  state: Generated<OtpState>;
+  attempt_count: Generated<number>;
+  max_attempts: Generated<number>;
+  sent_at: Generated<Date>;
+  expires_at: Timestamp;
+  verified_at: Date | null;
+  consumed_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: ManagedTimestamp;
+  version: RowVersion;
+}
+
+export interface IdentityAttemptTable {
+  id: Generated<string>;
+  hospital_id: string;
+  kiosk_device_id: string | null;
+  kiosk_session_id: string | null;
+  method: IdentityMethod;
+  strength: IdentityMatchStrength;
+  candidate_count: number;
+  matched_patient_id: string | null;
+  confirmed: Generated<boolean>;
+  outcome: string;
+  correlation_id: string;
+  created_at: Generated<Date>;
+}
+
 export interface AuditEventTable {
   id: Generated<string>;
   occurred_at: Generated<Date>;
@@ -354,6 +393,8 @@ export interface Database {
   document: DocumentTable;
   ocr_extraction: OcrExtractionTable;
   triage_status: TriageStatusTable;
+  otp_verification: OtpVerificationTable;
+  identity_attempt: IdentityAttemptTable;
   audit_event: AuditEventTable;
   integration_outbox: IntegrationOutboxTable;
 }
@@ -372,5 +413,7 @@ export type PreCheckinRow = Selectable<PreCheckinTable>;
 export type KioskSessionRow = Selectable<KioskSessionTable>;
 export type PatientRow = Selectable<PatientTable>;
 export type GovernanceVersionRow = Selectable<GovernanceVersionTable>;
+export type OtpVerificationRow = Selectable<OtpVerificationTable>;
+export type IdentityAttemptRow = Selectable<IdentityAttemptTable>;
 export type AuditEventRow = Selectable<AuditEventTable>;
 export type NewAuditEvent = Insertable<AuditEventTable>;
