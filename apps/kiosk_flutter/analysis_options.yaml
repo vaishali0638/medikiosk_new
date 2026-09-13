@@ -17,6 +17,7 @@ analyzer:
     - build/**
     - lib/theme/design_tokens.dart # generated from packages/design_tokens
     - android/**
+    - macos/**
 
 linter:
   rules:

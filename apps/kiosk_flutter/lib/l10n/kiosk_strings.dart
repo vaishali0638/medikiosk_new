@@ -120,6 +120,33 @@ class KioskStrings {
     'identity.notConfirmed.body':
         'Please speak to the counter, where staff can help you check in.',
 
+    'arrival.scan.title': 'Check in with Mobile QR',
+    'arrival.scan.subtitle': 'Show your MediKiosk QR code on your mobile phone.',
+    'arrival.scan.action': 'Scan QR',
+    'arrival.scan.cameraUnavailable':
+        'The scanner is not working on this kiosk. Please speak to the counter.',
+    'arrival.confirm.title': 'Confirm your visit',
+    'arrival.confirm.subtitle': 'Some details are hidden for your privacy.',
+    'arrival.confirm.name': 'Name',
+    'arrival.confirm.mobile': 'Mobile',
+    'arrival.confirm.hospital': 'Hospital',
+    'arrival.confirm.department': 'Department',
+    'arrival.confirm.visitType': 'Visit type',
+    'arrival.confirm.yes': 'Yes, continue',
+    'arrival.changed.title': 'Has anything changed since you filled this in?',
+    'arrival.changed.nothing': 'No, nothing has changed',
+    'arrival.changed.somethingChanged': 'Yes, something has changed',
+    'arrival.changed.whatChanged': 'What has changed?',
+    'arrival.changed.symptoms': 'Symptoms',
+    'arrival.changed.medicines': 'Medicines',
+    'arrival.changed.allergy': 'Allergy or side effect',
+    'arrival.changed.newReport': 'New report',
+    'arrival.changed.newDiagnosis': 'New diagnosis',
+    'arrival.changed.other': 'Something else',
+    'arrival.rejected.title': 'This QR cannot be used',
+    'arrival.rejected.body':
+        'Please speak to the counter, where staff can help you check in.',
+
     'startup.title': 'Starting up',
     'startup.body': 'Preparing this kiosk.',
     'startup.unavailable': 'This kiosk is not ready for use.',
@@ -216,6 +243,32 @@ class KioskStrings {
     'identity.notConfirmed.title': 'हम आपका विवरण सत्यापित नहीं कर सके',
     'identity.notConfirmed.body': 'कृपया काउंटर पर बात करें, वहाँ कर्मचारी आपकी मदद करेंगे।',
 
+    'arrival.scan.title': 'मोबाइल QR से चेक-इन करें',
+    'arrival.scan.subtitle': 'अपने मोबाइल पर MediKiosk QR कोड दिखाएँ।',
+    'arrival.scan.action': 'QR स्कैन करें',
+    'arrival.scan.cameraUnavailable':
+        'इस कियोस्क पर स्कैनर काम नहीं कर रहा। कृपया काउंटर पर बात करें।',
+    'arrival.confirm.title': 'अपनी विज़िट की पुष्टि करें',
+    'arrival.confirm.subtitle': 'आपकी निजता के लिए कुछ विवरण छिपाए गए हैं।',
+    'arrival.confirm.name': 'नाम',
+    'arrival.confirm.mobile': 'मोबाइल',
+    'arrival.confirm.hospital': 'अस्पताल',
+    'arrival.confirm.department': 'विभाग',
+    'arrival.confirm.visitType': 'विज़िट का प्रकार',
+    'arrival.confirm.yes': 'हाँ, आगे बढ़ें',
+    'arrival.changed.title': 'क्या इसे भरने के बाद कुछ बदला है?',
+    'arrival.changed.nothing': 'नहीं, कुछ नहीं बदला',
+    'arrival.changed.somethingChanged': 'हाँ, कुछ बदला है',
+    'arrival.changed.whatChanged': 'क्या बदला है?',
+    'arrival.changed.symptoms': 'लक्षण',
+    'arrival.changed.medicines': 'दवाइयाँ',
+    'arrival.changed.allergy': 'एलर्जी या दुष्प्रभाव',
+    'arrival.changed.newReport': 'नई रिपोर्ट',
+    'arrival.changed.newDiagnosis': 'नया निदान',
+    'arrival.changed.other': 'कुछ और',
+    'arrival.rejected.title': 'यह QR उपयोग नहीं किया जा सकता',
+    'arrival.rejected.body': 'कृपया काउंटर पर बात करें, वहाँ कर्मचारी आपकी मदद करेंगे।',
+
     'startup.title': 'शुरू हो रहा है',
     'startup.body': 'यह कियोस्क तैयार किया जा रहा है।',
     'startup.unavailable': 'यह कियोस्क अभी उपयोग के लिए तैयार नहीं है।',
@@ -224,6 +277,25 @@ class KioskStrings {
   static const Map<String, Map<String, String>> _byTag = <String, Map<String, String>>{
     'en': _english,
     'hi': _hindi,
+  };
+
+  /// Shell keys whose wording is clinical vocabulary rather than navigation.
+  ///
+  /// Phase 6 introduced the first of these: the "what has changed?" picker names
+  /// categories a patient reports against, and the master prompt specifies the labels
+  /// verbatim. They are listed here rather than banned because the guard's purpose is to
+  /// stop clinical wording arriving UNNOTICED, not to pretend a kiosk can avoid it.
+  ///
+  /// Everything in this set still needs a translation reviewer's sign-off before pilot
+  /// use, and moves into the governance registry with the questionnaires in Phase 14.
+  /// Writing "नई पहचान" (new identity) for "New diagnosis" instead of "नया निदान" is
+  /// exactly the class of error this list exists to keep visible.
+  static const Set<String> clinicalVocabularyKeys = <String>{
+    'arrival.changed.symptoms',
+    'arrival.changed.medicines',
+    'arrival.changed.allergy',
+    'arrival.changed.newReport',
+    'arrival.changed.newDiagnosis',
   };
 
   /// Every key the English baseline defines. Used by a test that asserts no translation

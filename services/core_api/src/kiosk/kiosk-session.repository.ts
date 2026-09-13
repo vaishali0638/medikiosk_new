@@ -55,6 +55,21 @@ export class KioskSessionRepository {
     return executor.selectFrom('kiosk_session').selectAll().where('id', '=', id).executeTakeFirst();
   }
 
+  /** The open session on a device, if any. A kiosk runs at most one at a time. */
+  async findLatestOpenForDevice(
+    deviceId: string,
+    executor: DbExecutor = this.db,
+  ): Promise<KioskSessionRow | undefined> {
+    return executor
+      .selectFrom('kiosk_session')
+      .selectAll()
+      .where('kiosk_device_id', '=', deviceId)
+      .where('ended_at', 'is', null)
+      .orderBy('started_at', 'desc')
+      .limit(1)
+      .executeTakeFirst();
+  }
+
   /** Records activity, resetting the inactivity window. Only meaningful while open. */
   async touch(id: string): Promise<KioskSessionRow | undefined> {
     return this.db

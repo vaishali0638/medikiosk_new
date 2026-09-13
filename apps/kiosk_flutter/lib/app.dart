@@ -9,7 +9,9 @@ import 'config/consent_notice.dart';
 import 'config/kiosk_config.dart';
 import 'l10n/kiosk_strings.dart';
 import 'platform/audio_guidance.dart';
+import 'platform/qr_scanner.dart';
 import 'platform/kiosk_lock.dart';
+import 'screens/arrival_screens.dart';
 import 'screens/consent_screen.dart';
 import 'screens/dialogs.dart';
 import 'screens/home_screen.dart';
@@ -30,6 +32,10 @@ enum ShellView {
   consentFullNotice,
   consentDeclined,
   consentUnavailable,
+  scanQr,
+  confirmVisit,
+  changedSince,
+  qrRejected,
   expired,
   error,
   offline,
@@ -45,6 +51,7 @@ class KioskApp extends StatefulWidget {
     required this.api,
     required this.kioskLock,
     required this.audio,
+    required this.scanner,
     required this.wipeBuilder,
     super.key,
   });
@@ -52,6 +59,7 @@ class KioskApp extends StatefulWidget {
   final ApiClient api;
   final KioskLock kioskLock;
   final AudioGuidance audio;
+  final QrScanner scanner;
 
   /// Builds the wipe once the shell can supply its UI-state clearers.
   final SecureWipe Function(List<VoidCallback> uiStateClearers) wipeBuilder;
@@ -74,6 +82,16 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   ConsentNotice? _notice;
   bool _speaking = false;
   bool _audioUnavailable = false;
+  bool _busy = false;
+  bool _cameraUnavailable = false;
+  bool _declaringChanges = false;
+  final Set<ChangedSection> _changedSections = <ChangedSection>{};
+  String? _arrivalHandle;
+  String? _arrivalMaskedName;
+  String? _arrivalMaskedMobile;
+  String? _arrivalHospital;
+  String? _arrivalDepartment;
+  String? _arrivalVisitType;
 
   KioskStrings get _strings => KioskStrings.of(_languageTag);
 
@@ -148,6 +166,18 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _notice = null;
     _speaking = false;
     _audioUnavailable = false;
+    _busy = false;
+    _cameraUnavailable = false;
+    _declaringChanges = false;
+    _changedSections.clear();
+    _arrivalHandle = null;
+    _arrivalMaskedName = null;
+    _arrivalMaskedMobile = null;
+    _arrivalHospital = null;
+    _arrivalDepartment = null;
+    _arrivalVisitType = null;
+    // A camera preview holds the last frames it saw. Release it with everything else.
+    unawaited(widget.scanner.stop());
     // Audio must not carry from one patient into the next. Fire-and-forget: the wipe
     // reports on what it can verify, and a stuck TTS engine must not block it.
     unawaited(widget.audio.stop());
@@ -293,6 +323,110 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     }
   }
 
+  /// Home -> scan. Starts a session first: the scan is the beginning of a patient's time
+  /// at the kiosk, and the inactivity wipe has to be running from that moment.
+  Future<void> _startMobileQrCheckIn() async {
+    final SessionManager? sessions = _sessions;
+    if (sessions == null) return;
+
+    try {
+      if (!sessions.hasActiveSession) await sessions.start();
+      final bool available = await widget.scanner.isAvailable();
+      if (!mounted) return;
+      setState(() {
+        _cameraUnavailable = !available;
+        _view = ShellView.scanQr;
+      });
+    } on ApiException catch (error) {
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _scanQr() async {
+    setState(() => _busy = true);
+    final ScanResult scan = await widget.scanner.scan();
+    await widget.scanner.stop();
+    if (!mounted) return;
+
+    if (scan.cameraUnavailable) {
+      setState(() {
+        _busy = false;
+        _cameraUnavailable = true;
+      });
+      return;
+    }
+    if (scan.payload == null) {
+      setState(() => _busy = false);
+      return;
+    }
+
+    try {
+      final Map<String, dynamic> json = await widget.api.post(
+        '/v1/arrival/check-in',
+        <String, dynamic>{
+          'kioskId': widget.api.kioskDeviceCode,
+          'qrPayload': scan.payload,
+        },
+      );
+      if (!mounted) return;
+
+      final Map<String, dynamic> masked = json['masked'] as Map<String, dynamic>;
+      setState(() {
+        _busy = false;
+        _arrivalHandle = json['arrivalId'] as String;
+        _arrivalMaskedName = masked['maskedName'] as String;
+        _arrivalMaskedMobile = masked['maskedMobile'] as String;
+        _arrivalHospital = json['hospitalName'] as String;
+        _arrivalDepartment = json['departmentName'] as String;
+        _arrivalVisitType = json['visitTypeLabel'] as String;
+        _view = ShellView.confirmVisit;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.isNetworkFailure) {
+        _handleApiFailure(error);
+        return;
+      }
+      // Every QR failure lands here and looks the same. The reason is on the server.
+      setState(() {
+        _busy = false;
+        _lastCorrelationId = error.correlationId;
+        _view = ShellView.qrRejected;
+      });
+    }
+  }
+
+  /// Records the arrival and what the patient says has changed.
+  Future<void> _confirmArrival() async {
+    final String? handle = _arrivalHandle;
+    if (handle == null) return;
+
+    setState(() => _busy = true);
+    try {
+      await widget.api.post('/v1/arrival/$handle/confirm', <String, dynamic>{
+        'identityConfirmed': true,
+        'changedSections':
+            _changedSections.map((ChangedSection s) => s.wire).toList(growable: false),
+      });
+      if (!mounted) return;
+
+      // Phase 7 requests the hospital token from here. Until then the session completes
+      // rather than pretending a token exists.
+      await _endSession(SessionEndReason.completed, nextView: ShellView.home);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (error.isNetworkFailure) {
+        _handleApiFailure(error);
+        return;
+      }
+      setState(() {
+        _lastCorrelationId = error.correlationId;
+        _view = ShellView.qrRejected;
+      });
+    }
+  }
+
   Future<void> _requestExit() async {
     final bool confirmed = await showExitConfirmation(context, _strings);
     if (!confirmed) {
@@ -363,8 +497,8 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         return HomeScreen(
           strings: _strings,
           features: _config?.features ?? FeatureFlags.allDisabled,
-          // Phases 5-6. Inert rather than hidden so the specified layout stays reviewable.
-          onCheckInWithMobileQr: null,
+          onCheckInWithMobileQr: () => unawaited(_startMobileQrCheckIn()),
+          // Phase 5's screens exist but are not yet wired into the shell journey.
           onNewRegistration: null,
           onExistingPatientCheckIn: null,
           onSelectLanguage: () => unawaited(_startSessionAndSelectLanguage()),
@@ -429,6 +563,58 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           strings: _strings,
           correlationId: _lastCorrelationId,
           onStartAgain: () =>
+              unawaited(_endSession(SessionEndReason.exit, nextView: ShellView.home)),
+        );
+
+      case ShellView.scanQr:
+        return ScanQrScreen(
+          strings: _strings,
+          busy: _busy,
+          cameraUnavailable: _cameraUnavailable,
+          onScan: () => unawaited(_scanQr()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.confirmVisit:
+        return ConfirmVisitScreen(
+          strings: _strings,
+          busy: _busy,
+          maskedName: _arrivalMaskedName ?? '',
+          maskedMobile: _arrivalMaskedMobile ?? '',
+          hospitalName: _arrivalHospital ?? '',
+          departmentName: _arrivalDepartment ?? '',
+          visitTypeLabel: _arrivalVisitType ?? '',
+          onConfirm: () => setState(() {
+            _declaringChanges = false;
+            _view = ShellView.changedSince;
+          }),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.changedSince:
+        return ChangedSinceScreen(
+          strings: _strings,
+          declaring: _declaringChanges,
+          selected: _changedSections,
+          onToggle: (ChangedSection section) => setState(() {
+            if (!_changedSections.remove(section)) _changedSections.add(section);
+          }),
+          onNothingChanged: () => unawaited(_confirmArrival()),
+          onContinue: () {
+            if (_declaringChanges) {
+              unawaited(_confirmArrival());
+            } else {
+              setState(() => _declaringChanges = true);
+            }
+          },
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.qrRejected:
+        return QrRejectedScreen(
+          strings: _strings,
+          correlationId: _lastCorrelationId,
+          onExit: () =>
               unawaited(_endSession(SessionEndReason.exit, nextView: ShellView.home)),
         );
 

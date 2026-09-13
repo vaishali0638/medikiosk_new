@@ -5,6 +5,7 @@ const baseEnv = {
   HIS_BASE_URL: 'https://his.example.org',
   SMS_ADAPTER: 'unconfigured',
   OTP_HMAC_SECRET: 'a'.repeat(48),
+  QR_SIGNING_KEY: '-----BEGIN PRIVATE KEY-----\nnot-parsed-by-loadEnv\n-----END PRIVATE KEY-----',
 };
 
 describe('environment configuration', () => {
@@ -80,6 +81,20 @@ describe('environment configuration', () => {
     expect(() => loadEnv({ OTP_HMAC_SECRET: 'too-short' } as unknown as NodeJS.ProcessEnv)).toThrow(
       /Invalid environment configuration/,
     );
+  });
+
+  it('requires a QR signing key in production', () => {
+    const env = loadEnv({
+      DATABASE_URL: baseEnv.DATABASE_URL,
+      HIS_BASE_URL: baseEnv.HIS_BASE_URL,
+      SMS_ADAPTER: 'unconfigured',
+      OTP_HMAC_SECRET: baseEnv.OTP_HMAC_SECRET,
+      NODE_ENV: 'production',
+      HIS_ADAPTER: 'rest',
+    } as unknown as NodeJS.ProcessEnv);
+    // Without it the service would fall back to an ephemeral key, and every QR issued
+    // before a restart would stop verifying mid-session.
+    expect(() => assertProductionAdapters(env)).toThrow(/QR_SIGNING_KEY/);
   });
 
   it('accepts a fully configured production environment', () => {

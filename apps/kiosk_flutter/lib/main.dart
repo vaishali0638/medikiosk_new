@@ -8,6 +8,7 @@ import 'api/api_client.dart';
 import 'app.dart';
 import 'platform/audio_guidance.dart';
 import 'platform/kiosk_lock.dart';
+import 'platform/qr_scanner.dart';
 import 'session/secure_wipe.dart';
 
 /// Backend base URL and device code come from the build, never from source.
@@ -43,6 +44,8 @@ void main() {
       // design review reports itself as unlocked rather than pretending otherwise.
       kioskLock: Platform.isAndroid ? const AndroidKioskLock() : const UnlockedKioskLock(),
       audio: Platform.isAndroid ? const PlatformAudioGuidance() : SilentAudioGuidance(),
+      scanner:
+          Platform.isAndroid ? const PlatformQrScanner() : const UnavailableQrScanner(),
       wipeBuilder: (List<VoidCallback> clearers) =>
           DeviceSecureWipe(uiStateClearers: clearers),
     ),

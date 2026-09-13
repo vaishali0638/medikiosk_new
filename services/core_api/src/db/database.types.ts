@@ -182,6 +182,9 @@ export interface PreCheckinTable {
   submitted_at: Date | null;
   arrival_confirmed_at: Date | null;
   arrival_kiosk_id: string | null;
+  /** Short-lived handle bridging the QR scan and the patient's confirmation. */
+  arrival_handle: string | null;
+  arrival_handle_expires_at: Date | null;
   created_at: Generated<Date>;
   updated_at: ManagedTimestamp;
   version: RowVersion;

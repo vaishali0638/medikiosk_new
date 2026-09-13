@@ -4,6 +4,7 @@ node_modules/
 .pnp.js
 
 # build output
+apps/patient_pwa/next-env.d.ts
 dist/
 build/
 .next/

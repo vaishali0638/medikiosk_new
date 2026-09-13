@@ -34,6 +34,18 @@ export const envSchema = z.object({
   OTP_KEY_ID: z.string().min(1).default('dev'),
 
   /**
+   * Ed25519 private key (PKCS8 PEM) that signs pre-check-in QR codes. Without it a
+   * development build generates an ephemeral key and says so; production refuses to boot.
+   */
+  QR_SIGNING_KEY: z.string().min(1).optional(),
+  QR_SIGNING_KEY_ID: z.string().min(1).default('dev'),
+  /**
+   * Public keys retired by a rotation, still accepted for verification so codes already
+   * on a patient's screen keep working. Blank-line-separated `<keyId>:<spki pem>` entries.
+   */
+  QR_RETIRED_PUBLIC_KEYS: z.string().optional(),
+
+  /**
    * Which HIS adapter to use. `sandbox` is a local development stand-in and is
    * rejected in production by assertProductionAdapters() below.
    */
@@ -82,6 +94,9 @@ export function assertProductionAdapters(env: Env): void {
   }
   if (!env.OTP_HMAC_SECRET) {
     problems.push('OTP_HMAC_SECRET is required in production');
+  }
+  if (!env.QR_SIGNING_KEY) {
+    problems.push('QR_SIGNING_KEY is required in production');
   }
   if (!env.HIS_BASE_URL) {
     problems.push('HIS_BASE_URL is required in production');
