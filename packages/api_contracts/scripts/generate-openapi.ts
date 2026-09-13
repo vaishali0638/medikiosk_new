@@ -354,6 +354,34 @@ const endpoints: readonly EndpointSpec[] = [
     phase: '7',
   },
   {
+    method: 'get',
+    path: '/intakes/{preCheckinId}/next',
+    summary:
+      'The next approved question, chosen by deterministic rules over the answers so far. ' +
+      'No model participates in choosing the clinical interview.',
+    tag: 'intake',
+    status: 'implemented',
+    phase: '8',
+  },
+  {
+    method: 'post',
+    path: '/intakes/{preCheckinId}/answers',
+    summary:
+      'Record an answer as a new revision, with its questionnaire version, source and ' +
+      'modality. Answers append; they never overwrite.',
+    tag: 'intake',
+    status: 'implemented',
+    phase: '8',
+  },
+  {
+    method: 'get',
+    path: '/intakes/{preCheckinId}/answers',
+    summary: 'Structured answers for the review screen, each with its provenance.',
+    tag: 'intake',
+    status: 'implemented',
+    phase: '8',
+  },
+  {
     method: 'post',
     path: '/documents',
     summary: 'Upload an original document and queue asynchronous processing.',
@@ -442,7 +470,8 @@ function buildOperation(spec: EndpointSpec): unknown {
     spec.tag === 'kiosk' ||
     spec.tag === 'arrival' ||
     spec.tag === 'consent' ||
-    spec.tag === 'identity'
+    spec.tag === 'identity' ||
+    spec.tag === 'intake'
   ) {
     parameters.push({
       name: KIOSK_DEVICE_HEADER,

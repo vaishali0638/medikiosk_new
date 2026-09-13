@@ -1,0 +1,478 @@
+{
+  "key": "common-core",
+  "version": "0.1.0-placeholder",
+  "title": "Your information for the doctor",
+  "nodes": [
+    {
+      "question": {
+        "id": "chiefComplaint",
+        "type": "SINGLE_SELECT",
+        "prompt": "What brings you here today?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "pain",
+            "label": "Pain"
+          },
+          {
+            "id": "fever",
+            "label": "Fever"
+          },
+          {
+            "id": "digestive",
+            "label": "Digestive problem"
+          },
+          {
+            "id": "skin",
+            "label": "Skin problem"
+          },
+          {
+            "id": "breathing",
+            "label": "Breathing problem"
+          },
+          {
+            "id": "followUp",
+            "label": "Follow-up"
+          },
+          {
+            "id": "other",
+            "label": "Something else"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "complaintDetail",
+        "type": "TEXT",
+        "prompt": "Please describe the problem in your own words.",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "maxLength": 600,
+        "help": "You can also tell the doctor instead."
+      },
+      "askWhen": {
+        "kind": "EQUALS",
+        "questionId": "chiefComplaint",
+        "value": "other"
+      }
+    },
+    {
+      "question": {
+        "id": "duration",
+        "type": "DURATION",
+        "prompt": "How long has this problem been present?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "today",
+            "label": "Today"
+          },
+          {
+            "id": "1to7days",
+            "label": "1\u20137 days"
+          },
+          {
+            "id": "1to4weeks",
+            "label": "1\u20134 weeks"
+          },
+          {
+            "id": "1to6months",
+            "label": "1\u20136 months"
+          },
+          {
+            "id": "over6months",
+            "label": "More than 6 months"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "onset",
+        "type": "SINGLE_SELECT",
+        "prompt": "How did it start?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "sudden",
+            "label": "Suddenly"
+          },
+          {
+            "id": "gradual",
+            "label": "Gradually"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "progression",
+        "type": "SINGLE_SELECT",
+        "prompt": "Since it started, has it changed?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "better",
+            "label": "Getting better"
+          },
+          {
+            "id": "same",
+            "label": "About the same"
+          },
+          {
+            "id": "worse",
+            "label": "Getting worse"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "severity",
+        "type": "NUMERIC_SCALE",
+        "prompt": "How severe is the problem right now?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "scale": {
+          "min": 0,
+          "max": 10,
+          "minLabel": "No problem",
+          "maxLabel": "Worst possible"
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "impact",
+        "type": "SINGLE_SELECT",
+        "prompt": "Does it stop you doing your usual daily activities?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "no",
+            "label": "No"
+          },
+          {
+            "id": "some",
+            "label": "Some of them"
+          },
+          {
+            "id": "most",
+            "label": "Most of them"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "associatedSymptoms",
+        "type": "MULTI_SELECT",
+        "prompt": "Do you have any of these along with the main problem?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "fever",
+            "label": "Fever"
+          },
+          {
+            "id": "weightLoss",
+            "label": "Weight loss"
+          },
+          {
+            "id": "tiredness",
+            "label": "Unusual tiredness"
+          },
+          {
+            "id": "swelling",
+            "label": "Swelling"
+          },
+          {
+            "id": "nausea",
+            "label": "Nausea or vomiting"
+          },
+          {
+            "id": "none",
+            "label": "None of these"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "takingMedicine",
+        "type": "YES_NO",
+        "prompt": "Are you taking any medicine for this problem?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "yes",
+            "label": "Yes"
+          },
+          {
+            "id": "no",
+            "label": "No"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "currentMedicines",
+        "type": "TEXT",
+        "prompt": "Which medicines are you taking? You can also show the doctor your prescription.",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "maxLength": 600
+      },
+      "askWhen": {
+        "kind": "EQUALS",
+        "questionId": "takingMedicine",
+        "value": "yes"
+      }
+    },
+    {
+      "question": {
+        "id": "hasAllergy",
+        "type": "YES_NO",
+        "prompt": "Have you ever had a bad reaction to a medicine?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "yes",
+            "label": "Yes"
+          },
+          {
+            "id": "no",
+            "label": "No"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "allergyDetail",
+        "type": "TEXT",
+        "prompt": "Which medicine, and what happened?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "maxLength": 400
+      },
+      "askWhen": {
+        "kind": "EQUALS",
+        "questionId": "hasAllergy",
+        "value": "yes"
+      }
+    },
+    {
+      "question": {
+        "id": "chronicConditions",
+        "type": "MULTI_SELECT",
+        "prompt": "Has a doctor told you that you have any of these?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "diabetes",
+            "label": "Diabetes"
+          },
+          {
+            "id": "hypertension",
+            "label": "High blood pressure"
+          },
+          {
+            "id": "heart",
+            "label": "Heart problem"
+          },
+          {
+            "id": "asthma",
+            "label": "Asthma or breathing problem"
+          },
+          {
+            "id": "thyroid",
+            "label": "Thyroid problem"
+          },
+          {
+            "id": "none",
+            "label": "None of these"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "pastSurgery",
+        "type": "YES_NO",
+        "prompt": "Have you had any surgery or hospital stay before?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "yes",
+            "label": "Yes"
+          },
+          {
+            "id": "no",
+            "label": "No"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "pastSurgeryDetail",
+        "type": "TEXT",
+        "prompt": "What was it for, and roughly when?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "maxLength": 400
+      },
+      "askWhen": {
+        "kind": "EQUALS",
+        "questionId": "pastSurgery",
+        "value": "yes"
+      }
+    },
+    {
+      "question": {
+        "id": "previousTreatment",
+        "type": "YES_NO",
+        "prompt": "Have you already had treatment for this problem somewhere else?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "yes",
+            "label": "Yes"
+          },
+          {
+            "id": "no",
+            "label": "No"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "smoking",
+        "type": "SINGLE_SELECT",
+        "prompt": "Do you use tobacco in any form?",
+        "sensitive": true,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "never",
+            "label": "Never"
+          },
+          {
+            "id": "past",
+            "label": "In the past"
+          },
+          {
+            "id": "current",
+            "label": "Currently"
+          }
+        ],
+        "sensitiveExplanation": "This information may help the doctor understand your health. You may choose to discuss it with the doctor instead."
+      }
+    },
+    {
+      "question": {
+        "id": "alcohol",
+        "type": "SINGLE_SELECT",
+        "prompt": "Do you drink alcohol?",
+        "sensitive": true,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "never",
+            "label": "Never"
+          },
+          {
+            "id": "occasionally",
+            "label": "Occasionally"
+          },
+          {
+            "id": "regularly",
+            "label": "Regularly"
+          }
+        ],
+        "sensitiveExplanation": "This information may help the doctor understand your health. You may choose to discuss it with the doctor instead."
+      }
+    },
+    {
+      "question": {
+        "id": "familyHistory",
+        "type": "MULTI_SELECT",
+        "prompt": "Has anyone in your close family had any of these?",
+        "sensitive": true,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "diabetes",
+            "label": "Diabetes"
+          },
+          {
+            "id": "hypertension",
+            "label": "High blood pressure"
+          },
+          {
+            "id": "heart",
+            "label": "Heart problem"
+          },
+          {
+            "id": "cancer",
+            "label": "Cancer"
+          },
+          {
+            "id": "none",
+            "label": "None of these"
+          }
+        ],
+        "sensitiveExplanation": "Some conditions run in families. You may choose to discuss this with the doctor instead."
+      }
+    },
+    {
+      "question": {
+        "id": "mentalWellbeing",
+        "type": "SINGLE_SELECT",
+        "prompt": "In the last two weeks, how often have you felt low or worried?",
+        "sensitive": true,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "notAtAll",
+            "label": "Not at all"
+          },
+          {
+            "id": "someDays",
+            "label": "Some days"
+          },
+          {
+            "id": "mostDays",
+            "label": "Most days"
+          }
+        ],
+        "sensitiveExplanation": "How you have been feeling can affect your physical health too. You may choose to discuss this with the doctor instead."
+      }
+    },
+    {
+      "question": {
+        "id": "patientQuestions",
+        "type": "TEXT",
+        "prompt": "Is there anything you would like the doctor to answer today?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "maxLength": 600
+      }
+    }
+  ]
+}

@@ -35,7 +35,8 @@
     "kysely": "^0.27.5",
     "pg": "^8.13.1",
     "postgres-array": "^3.0.2",
-    "@medikiosk/his-adapter": "0.1.0"
+    "@medikiosk/his-adapter": "0.1.0",
+    "@medikiosk/questionnaire-schema": "0.1.0"
   },
   "devDependencies": {
     "@nestjs/testing": "^10.4.15",

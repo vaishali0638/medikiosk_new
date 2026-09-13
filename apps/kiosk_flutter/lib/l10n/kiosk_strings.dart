@@ -160,6 +160,13 @@ class KioskStrings {
     'token.pending.title': 'Please speak to the counter',
     'token.pending.body': 'We could not confirm your token with the hospital system. Staff at the counter can complete your check-in.',
 
+    'question.notSure': 'I am not sure',
+    'question.preferToDiscuss': 'I prefer to tell the doctor',
+    'question.notApplicable': 'This does not apply to me',
+    'question.whyAsking': 'Why are we asking?',
+    'question.answer': 'Answer this question',
+    'question.progress': 'Question',
+
     'startup.title': 'Starting up',
     'startup.body': 'Preparing this kiosk.',
     'startup.unavailable': 'This kiosk is not ready for use.',
@@ -294,6 +301,13 @@ class KioskStrings {
     'token.finish': 'समाप्त करें',
     'token.pending.title': 'कृपया काउंटर पर बात करें',
     'token.pending.body': 'हम अस्पताल प्रणाली से आपका टोकन पक्का नहीं कर सके। काउंटर पर कर्मचारी आपका चेक-इन पूरा कर देंगे।',
+
+    'question.notSure': 'मुझे पक्का नहीं पता',
+    'question.preferToDiscuss': 'मैं डॉक्टर को बताना चाहूँगा/चाहूँगी',
+    'question.notApplicable': 'यह मुझ पर लागू नहीं होता',
+    'question.whyAsking': 'हम यह क्यों पूछ रहे हैं?',
+    'question.answer': 'इस प्रश्न का उत्तर दें',
+    'question.progress': 'प्रश्न',
 
     'startup.title': 'शुरू हो रहा है',
     'startup.body': 'यह कियोस्क तैयार किया जा रहा है।',

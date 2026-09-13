@@ -99,6 +99,50 @@ async function main(): Promise<void> {
       // it must be replaced through the governance console, with named clinical and legal
       // approval, before any real patient is asked to agree to it. The seeded approval is
       // recorded as SEED-PLACEHOLDER precisely so it cannot be mistaken for a sign-off.
+      // The common clinical core.
+      //
+      // The STRUCTURE follows the specification; not a phrase of it has been reviewed by
+      // a practitioner. It is published so the engine can be exercised end to end, and
+      // its version says `-placeholder` precisely so it cannot be mistaken for approved
+      // clinical content. Phase 14 replaces it through the governance console, with named
+      // practitioner, safety and translation approvals.
+      //
+      // Only English: publishing an unreviewed translation of clinical questions would be
+      // worse than offering none, so Hindi intake is unavailable until it is translated
+      // and reviewed.
+      {
+        const payload: unknown = JSON.parse(
+          readFileSync(
+            resolve(__dirname, '../../../infra/seed-content/questionnaire.common-core.en.json'),
+            'utf8',
+          ),
+        );
+
+        await trx
+          .insertInto('governance_version')
+          .values({
+            hospital_id: hospital.id,
+            content_kind: 'QUESTIONNAIRE',
+            content_key: 'common-core/en',
+            semver: '0.1.0',
+            state: 'PUBLISHED',
+            payload: JSON.stringify(payload),
+            author_actor_id: 'SEED',
+            approvals: JSON.stringify([
+              {
+                by: 'SEED-PLACEHOLDER',
+                role: 'NOT_A_REAL_APPROVAL',
+                at: new Date().toISOString(),
+              },
+            ]),
+            effective_from: new Date(),
+          })
+          .onConflict((oc) =>
+            oc.columns(['hospital_id', 'content_kind', 'content_key', 'semver']).doNothing(),
+          )
+          .execute();
+      }
+
       for (const language of ['en', 'hi']) {
         const payload: unknown = JSON.parse(
           readFileSync(
@@ -131,7 +175,7 @@ async function main(): Promise<void> {
 
     process.stdout.write(
       `seeded ${HOSPITAL_CODE}: 1 branch, 3 departments, 3 languages, 3 kiosks, ` +
-        '2 placeholder consent notices\n',
+        '2 placeholder consent notices, 1 placeholder questionnaire\n',
     );
   } finally {
     await db.destroy();
