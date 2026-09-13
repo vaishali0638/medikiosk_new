@@ -13,7 +13,7 @@ import { QrTokenService } from '../precheckin/qr-token.service';
 import { QrNonceRepository } from './qr-nonce.repository';
 import type { KioskContext } from '../kiosk/kiosk-device.guard';
 
-/** The handle lives only for the moments between scanning and confirming. */
+/** The handle lives only for the few minutes a patient spends at the kiosk. */
 const ARRIVAL_HANDLE_TTL_SECONDS = 300;
 
 /**
@@ -228,7 +228,11 @@ export class ArrivalService {
     request: ArrivalConfirmRequest,
     kiosk: KioskContext,
     correlationId: string,
-  ): Promise<{ preCheckinId: string; changedSections: readonly string[] }> {
+  ): Promise<{
+    preCheckinId: string;
+    tokenHandle: string;
+    changedSections: readonly string[];
+  }> {
     return withSerializableRetry(this.db, async (trx) => {
       const row = await trx
         .selectFrom('pre_checkin')
@@ -247,14 +251,19 @@ export class ArrivalService {
 
       preCheckinMachine.assertTransition(row.state, 'ARRIVAL_CONFIRMED');
 
+      // The handle is ROTATED, not cleared. Requesting a token is a third step, and the
+      // alternative — addressing the visit by its pre-check-in id — would hand that step
+      // to anyone who photographed the QR, since the payload is signed but not encrypted.
+      // A fresh value means the handle used to confirm cannot also fetch a token.
+      const tokenHandle = randomUUID();
+
       await trx
         .updateTable('pre_checkin')
         .set({
           state: 'ARRIVAL_CONFIRMED',
           arrival_confirmed_at: new Date(),
-          // The handle is spent here: it exists only to bridge scan and confirm.
-          arrival_handle: null,
-          arrival_handle_expires_at: null,
+          arrival_handle: tokenHandle,
+          arrival_handle_expires_at: new Date(Date.now() + ARRIVAL_HANDLE_TTL_SECONDS * 1000),
         })
         .where('id', '=', row.id)
         .where('version', '=', row.version)
@@ -273,8 +282,32 @@ export class ArrivalService {
         trx,
       );
 
-      return { preCheckinId: row.id, changedSections: request.changedSections };
+      return { preCheckinId: row.id, tokenHandle, changedSections: request.changedSections };
     });
+  }
+
+  /**
+   * Resolves a token handle to its visit, refusing an unknown or lapsed one.
+   *
+   * Every step after the scan addresses the visit through a handle rather than its
+   * pre-check-in id, and each step rotates it, so a value observed at one step cannot be
+   * replayed at the next.
+   */
+  async resolveTokenHandle(handle: string, correlationId: string): Promise<string> {
+    const row = await this.db
+      .selectFrom('pre_checkin')
+      .select(['id', 'arrival_handle_expires_at'])
+      .where('arrival_handle', '=', handle)
+      .executeTakeFirst();
+
+    if (
+      !row ||
+      !row.arrival_handle_expires_at ||
+      new Date(row.arrival_handle_expires_at).getTime() <= Date.now()
+    ) {
+      throw new DomainError('QR_INVALID', correlationId, 'token handle unknown or expired');
+    }
+    return row.id;
   }
 
   /**

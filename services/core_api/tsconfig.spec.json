@@ -8,5 +8,10 @@
     "rootDir": "../..",
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "../../packages/*/src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "../../packages/*/src/**/*.ts",
+    "../his_adapter/src/**/*.ts"
+  ]
 }

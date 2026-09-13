@@ -229,6 +229,10 @@ export interface TokenRequestTable {
   attempt_count: Generated<number>;
   his_token: string | null;
   his_response_ref: string | null;
+  /** Where to go and where they stand in the queue, as the HIS reported them. */
+  room: string | null;
+  queue_status: string | null;
+  last_latency_ms: number | null;
   last_error_code: string | null;
   requested_at: Date | null;
   acknowledged_at: Date | null;

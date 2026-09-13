@@ -3622,13 +3622,13 @@
         }
       }
     },
-    "/v1/arrival/{id}/token": {
+    "/v1/arrival/{handle}/token": {
       "post": {
-        "summary": "Request a final token from the hospital HIS. Never issues one independently.",
+        "summary": "Request the hospital token. The HIS issues it; MediKiosk never invents one, and never issues a second for the same visit. An uncertain outcome is parked for a human.",
         "tags": [
           "arrival"
         ],
-        "x-status": "not-implemented",
+        "x-status": "implemented",
         "x-phase": "7",
         "parameters": [
           {
@@ -3636,15 +3636,6 @@
             "in": "header",
             "required": true,
             "description": "UUID correlating one patient journey across every service.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -3745,13 +3736,13 @@
         }
       }
     },
-    "/v1/arrival/{id}/status": {
+    "/v1/arrival/{handle}/status": {
       "get": {
-        "summary": "Poll a token outcome and reconciliation state.",
+        "summary": "Poll the recorded outcome. Never contacts the HIS.",
         "tags": [
           "arrival"
         ],
-        "x-status": "not-implemented",
+        "x-status": "implemented",
         "x-phase": "7",
         "parameters": [
           {
@@ -3759,15 +3750,6 @@
             "in": "header",
             "required": true,
             "description": "UUID correlating one patient journey across every service.",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -3793,6 +3775,160 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ops/reconciliation": {
+      "get": {
+        "summary": "Token requests awaiting human reconciliation. Exposes no patient data.",
+        "tags": [
+          "ops"
+        ],
+        "x-status": "implemented",
+        "x-phase": "7",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ops/reconciliation/sweep": {
+      "post": {
+        "summary": "Re-poll the HIS for unresolved requests. Only ever asks; never requests a token.",
+        "tags": [
+          "ops"
+        ],
+        "x-status": "implemented",
+        "x-phase": "7",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
           },
           "400": {
             "description": "Validation failed.",

@@ -10,6 +10,7 @@ import 'config/kiosk_config.dart';
 import 'l10n/kiosk_strings.dart';
 import 'platform/audio_guidance.dart';
 import 'platform/qr_scanner.dart';
+import 'platform/token_printer.dart';
 import 'platform/kiosk_lock.dart';
 import 'screens/arrival_screens.dart';
 import 'screens/consent_screen.dart';
@@ -17,6 +18,7 @@ import 'screens/dialogs.dart';
 import 'screens/home_screen.dart';
 import 'screens/language_screen.dart';
 import 'screens/status_screens.dart';
+import 'screens/token_screen.dart';
 import 'session/secure_wipe.dart';
 import 'session/session_manager.dart';
 import 'session/session_state.dart';
@@ -36,6 +38,8 @@ enum ShellView {
   confirmVisit,
   changedSince,
   qrRejected,
+  token,
+  tokenPending,
   expired,
   error,
   offline,
@@ -52,6 +56,7 @@ class KioskApp extends StatefulWidget {
     required this.kioskLock,
     required this.audio,
     required this.scanner,
+    required this.printer,
     required this.wipeBuilder,
     super.key,
   });
@@ -60,6 +65,7 @@ class KioskApp extends StatefulWidget {
   final KioskLock kioskLock;
   final AudioGuidance audio;
   final QrScanner scanner;
+  final TokenPrinter printer;
 
   /// Builds the wipe once the shell can supply its UI-state clearers.
   final SecureWipe Function(List<VoidCallback> uiStateClearers) wipeBuilder;
@@ -92,6 +98,12 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   String? _arrivalHospital;
   String? _arrivalDepartment;
   String? _arrivalVisitType;
+  String? _tokenHandle;
+  String? _token;
+  String? _tokenRoom;
+  String? _tokenQueueStatus;
+  bool _printerAvailable = false;
+  bool _printFailed = false;
 
   KioskStrings get _strings => KioskStrings.of(_languageTag);
 
@@ -176,6 +188,11 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _arrivalHospital = null;
     _arrivalDepartment = null;
     _arrivalVisitType = null;
+    _tokenHandle = null;
+    _token = null;
+    _tokenRoom = null;
+    _tokenQueueStatus = null;
+    _printFailed = false;
     // A camera preview holds the last frames it saw. Release it with everything else.
     unawaited(widget.scanner.stop());
     // Audio must not carry from one patient into the next. Fire-and-forget: the wipe
@@ -403,16 +420,16 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
 
     setState(() => _busy = true);
     try {
-      await widget.api.post('/v1/arrival/$handle/confirm', <String, dynamic>{
+      final Map<String, dynamic> json =
+          await widget.api.post('/v1/arrival/$handle/confirm', <String, dynamic>{
         'identityConfirmed': true,
         'changedSections':
             _changedSections.map((ChangedSection s) => s.wire).toList(growable: false),
       });
       if (!mounted) return;
 
-      // Phase 7 requests the hospital token from here. Until then the session completes
-      // rather than pretending a token exists.
-      await _endSession(SessionEndReason.completed, nextView: ShellView.home);
+      setState(() => _tokenHandle = json['tokenHandle'] as String);
+      await _requestToken();
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -425,6 +442,57 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         _view = ShellView.qrRejected;
       });
     }
+  }
+
+  /// Asks the hospital for the token.
+  ///
+  /// Any outcome that is not an issued token sends the patient to the counter rather than
+  /// retrying: the backend has already decided whether a retry is safe, and a kiosk that
+  /// second-guessed that could produce a duplicate.
+  Future<void> _requestToken() async {
+    final String? handle = _tokenHandle;
+    if (handle == null) return;
+
+    setState(() => _busy = true);
+    try {
+      final Map<String, dynamic> json = await widget.api.post('/v1/arrival/$handle/token');
+      final bool printerAvailable = await widget.printer.isAvailable();
+      if (!mounted) return;
+
+      setState(() {
+        _busy = false;
+        _token = json['token'] as String?;
+        _tokenRoom = json['room'] as String?;
+        _tokenQueueStatus = json['queueStatus'] as String?;
+        _printerAvailable = printerAvailable;
+        _view = _token == null ? ShellView.tokenPending : ShellView.token;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _lastCorrelationId = error.correlationId;
+        _view = error.isNetworkFailure ? ShellView.offline : ShellView.tokenPending;
+      });
+    }
+  }
+
+  /// Printing is a convenience. A failure is reported beside a token that is still valid,
+  /// and never changes the token's state.
+  Future<void> _printToken() async {
+    final String? token = _token;
+    if (token == null) return;
+
+    final PrintResult result = await widget.printer.printToken(
+      TokenSlip(
+        token: token,
+        departmentName: _arrivalDepartment ?? '',
+        room: _tokenRoom,
+        queueStatus: _tokenQueueStatus,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _printFailed = !result.printed);
   }
 
   Future<void> _requestExit() async {
@@ -616,6 +684,31 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           correlationId: _lastCorrelationId,
           onExit: () =>
               unawaited(_endSession(SessionEndReason.exit, nextView: ShellView.home)),
+        );
+
+      case ShellView.token:
+        return TokenScreen(
+          strings: _strings,
+          token: _token ?? '',
+          departmentName: _arrivalDepartment ?? '',
+          room: _tokenRoom,
+          queueStatus: _tokenQueueStatus,
+          printerAvailable: _printerAvailable,
+          printFailed: _printFailed,
+          onPrint: () => unawaited(_printToken()),
+          // Phase 12 wires the SMS send; offering it inert would promise something the
+          // deployment cannot yet do.
+          onSendToMobile: () {},
+          onFinish: () =>
+              unawaited(_endSession(SessionEndReason.completed, nextView: ShellView.home)),
+        );
+
+      case ShellView.tokenPending:
+        return TokenPendingScreen(
+          strings: _strings,
+          correlationId: _lastCorrelationId,
+          onFinish: () =>
+              unawaited(_endSession(SessionEndReason.completed, nextView: ShellView.home)),
         );
 
       case ShellView.expired:

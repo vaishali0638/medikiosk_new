@@ -70,6 +70,22 @@ export class KioskSessionRepository {
       .executeTakeFirst();
   }
 
+  /**
+   * Links a session to the visit being served, without changing its state.
+   *
+   * A mobile-QR patient completed language, consent and demographics at home, so their
+   * kiosk session never traverses those states. The link is what lets the wipe clear the
+   * association on exit; the visit's own state machine tracks the journey.
+   */
+  async attachPreCheckin(sessionId: string, preCheckinId: string): Promise<void> {
+    await this.db
+      .updateTable('kiosk_session')
+      .set({ pre_checkin_id: preCheckinId })
+      .where('id', '=', sessionId)
+      .where('ended_at', 'is', null)
+      .execute();
+  }
+
   /** Records activity, resetting the inactivity window. Only meaningful while open. */
   async touch(id: string): Promise<KioskSessionRow | undefined> {
     return this.db

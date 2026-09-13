@@ -9,6 +9,7 @@ import 'app.dart';
 import 'platform/audio_guidance.dart';
 import 'platform/kiosk_lock.dart';
 import 'platform/qr_scanner.dart';
+import 'platform/token_printer.dart';
 import 'session/secure_wipe.dart';
 
 /// Backend base URL and device code come from the build, never from source.
@@ -46,6 +47,9 @@ void main() {
       audio: Platform.isAndroid ? const PlatformAudioGuidance() : SilentAudioGuidance(),
       scanner:
           Platform.isAndroid ? const PlatformQrScanner() : const UnavailableQrScanner(),
+      printer: Platform.isAndroid
+          ? const PlatformTokenPrinter()
+          : const UnavailableTokenPrinter(),
       wipeBuilder: (List<VoidCallback> clearers) =>
           DeviceSecureWipe(uiStateClearers: clearers),
     ),

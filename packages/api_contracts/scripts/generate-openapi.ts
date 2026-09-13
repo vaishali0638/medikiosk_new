@@ -317,10 +317,12 @@ const endpoints: readonly EndpointSpec[] = [
   },
   {
     method: 'post',
-    path: '/arrival/{id}/token',
-    summary: 'Request a final token from the hospital HIS. Never issues one independently.',
+    path: '/arrival/{handle}/token',
+    summary:
+      'Request the hospital token. The HIS issues it; MediKiosk never invents one, and ' +
+      'never issues a second for the same visit. An uncertain outcome is parked for a human.',
     tag: 'arrival',
-    status: 'not-implemented',
+    status: 'implemented',
     phase: '7',
     requestSchema: 'TokenRequest',
     responseSchema: 'TokenResponse',
@@ -328,12 +330,28 @@ const endpoints: readonly EndpointSpec[] = [
   },
   {
     method: 'get',
-    path: '/arrival/{id}/status',
-    summary: 'Poll a token outcome and reconciliation state.',
+    path: '/arrival/{handle}/status',
+    summary: 'Poll the recorded outcome. Never contacts the HIS.',
     tag: 'arrival',
-    status: 'not-implemented',
+    status: 'implemented',
     phase: '7',
     responseSchema: 'ArrivalStatusResponse',
+  },
+  {
+    method: 'get',
+    path: '/ops/reconciliation',
+    summary: 'Token requests awaiting human reconciliation. Exposes no patient data.',
+    tag: 'ops',
+    status: 'implemented',
+    phase: '7',
+  },
+  {
+    method: 'post',
+    path: '/ops/reconciliation/sweep',
+    summary: 'Re-poll the HIS for unresolved requests. Only ever asks; never requests a token.',
+    tag: 'ops',
+    status: 'implemented',
+    phase: '7',
   },
   {
     method: 'post',

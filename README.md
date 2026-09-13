@@ -26,14 +26,14 @@ apps/patient_pwa       Patient pre-check-in PWA (Next.js)
 apps/doctor_web        Doctor dashboard                    [placeholder — Phase 13]
 apps/governance_web    Clinical governance console         [placeholder — Phase 14]
 services/core_api      NestJS modular monolith
-services/his_adapter   HIS/queue adapter + sandbox         [interface only — Phase 7]
+services/his_adapter   HIS/queue adapter interface + sandbox
 services/ai_worker     Python ASR/OCR/summary workers      [placeholder — Phase 10/11]
 packages/api_contracts        Shared typed contracts
 packages/design_tokens        Canonical theme (generates Dart + CSS)
 packages/questionnaire_schema Versioned questionnaire schema
 packages/terminology          Provenance labels and value sets
 infra/docker           Local development stack
-infra/migrations       PostgreSQL migrations (10 files, 23 tables)
+infra/migrations       PostgreSQL migrations (11 files, 23 tables)
 infra/seed-content     Placeholder governed content (consent notices)
 tools                  Repository guards (forbidden-option scan)
 docs                   Architecture, API, security, runbooks
@@ -114,17 +114,17 @@ deployment does not provide:
 
 ## Build status
 
-| Phase | Scope                                                                                        | Status                                                        |
-| ----- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 0     | Discovery, clinical governance, hospital sign-off                                            | Not started — organisational                                  |
-| 1     | Repo, design system, CI, health check                                                        | Complete                                                      |
-| 2     | Database, contracts, state machines                                                          | Complete                                                      |
-| 3     | Kiosk shell and session security                                                             | Complete                                                      |
-| 4     | Language, accessibility, consent                                                             | Complete                                                      |
-| 5     | Identity and patient matching                                                                | Complete                                                      |
-| **6** | **Mobile pre-check-in and signed QR**                                                        | **Complete** — PWA source written, dependencies not installed |
-| 7     | HIS/queue token adapter                                                                      | Next — interface stub only                                    |
-| 8–18  | Clinical core, AYUSH, OCR, AI, follow-up, doctor, governance, hardening, ops, pilot, release | Not started                                                   |
+| Phase | Scope                                                                                        | Status                       |
+| ----- | -------------------------------------------------------------------------------------------- | ---------------------------- |
+| 0     | Discovery, clinical governance, hospital sign-off                                            | Not started — organisational |
+| 1     | Repo, design system, CI, health check                                                        | Complete                     |
+| 2     | Database, contracts, state machines                                                          | Complete                     |
+| 3     | Kiosk shell and session security                                                             | Complete                     |
+| 4     | Language, accessibility, consent                                                             | Complete                     |
+| 5     | Identity and patient matching                                                                | Complete                     |
+| 6     | Mobile pre-check-in and signed QR                                                            | Complete                     |
+| **7** | **HIS/queue token adapter**                                                                  | **Complete**                 |
+| 8–18  | Clinical core, AYUSH, OCR, AI, follow-up, doctor, governance, hardening, ops, pilot, release | Next: 8 — clinical core      |
 
 Every unbuilt capability is behind a feature flag that defaults to off, and a disabled
 feature must not appear in any UI.

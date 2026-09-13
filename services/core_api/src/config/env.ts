@@ -34,6 +34,12 @@ export const envSchema = z.object({
   OTP_KEY_ID: z.string().min(1).default('dev'),
 
   /**
+   * Shared key for the operations endpoints. Placeholder until Phase 15 brings staff SSO;
+   * with no key configured the endpoints refuse rather than defaulting open.
+   */
+  OPS_API_KEY: z.string().min(24).optional(),
+
+  /**
    * Ed25519 private key (PKCS8 PEM) that signs pre-check-in QR codes. Without it a
    * development build generates an ephemeral key and says so; production refuses to boot.
    */

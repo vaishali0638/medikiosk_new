@@ -8,6 +8,7 @@ module.exports = {
   moduleNameMapper: {
     '^@medikiosk/api-contracts$': '<rootDir>/../../packages/api_contracts/src/index.ts',
     '^@medikiosk/terminology$': '<rootDir>/../../packages/terminology/src/index.ts',
+    '^@medikiosk/his-adapter$': '<rootDir>/../his_adapter/src/index.ts',
   },
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],

@@ -147,7 +147,7 @@ describe('arrival (integration)', () => {
         .send({ kioskId: 'MK-OPD-01', qrPayload: token })
         .expect(201);
 
-      await http()
+      const confirmed = await http()
         .post(`/v1/arrival/${checkIn.body.arrivalId}/confirm`)
         .set(headers())
         .send({ identityConfirmed: true, changedSections: ['SYMPTOMS', 'MEDICINES'] })
@@ -161,8 +161,16 @@ describe('arrival (integration)', () => {
 
       expect(row.state).toBe('ARRIVAL_CONFIRMED');
       expect(row.arrival_confirmed_at).not.toBeNull();
-      // The handle is spent: it exists only to bridge scan and confirm.
-      expect(row.arrival_handle).toBeNull();
+
+      // The handle is ROTATED, not cleared: requesting a token is a third step, and the
+      // value used to confirm must not also be able to fetch a token.
+      expect(row.arrival_handle).not.toBeNull();
+      expect(row.arrival_handle).not.toBe(checkIn.body.arrivalId);
+      expect(confirmed.body.tokenHandle).toBe(row.arrival_handle);
+
+      // The pre-check-in id is never returned to the kiosk — anyone who photographed the
+      // QR can read it, so it must not be an addressable handle.
+      expect(JSON.stringify(confirmed.body)).not.toContain(preCheckinId);
     });
   });
 
