@@ -541,6 +541,18 @@ export interface LegalHoldTable {
   released_by: string | null;
 }
 
+export interface DeviceEventTable {
+  id: Generated<string>;
+  kiosk_device_id: string;
+  kind: string;
+  /** Operational detail only. Redacted by the caller; never clinical content. */
+  detail: Generated<unknown>;
+  kiosk_session_id: string | null;
+  occurred_at: Generated<Date>;
+  reported_at: Generated<Date>;
+  correlation_id: string;
+}
+
 export interface Database {
   hospital: HospitalTable;
   branch: BranchTable;
@@ -552,6 +564,7 @@ export interface Database {
   rate_limit_bucket: RateLimitBucketTable;
   retention_policy: RetentionPolicyTable;
   legal_hold: LegalHoldTable;
+  device_event: DeviceEventTable;
   patient: PatientTable;
   patient_identifier: PatientIdentifierTable;
   consent: ConsentTable;

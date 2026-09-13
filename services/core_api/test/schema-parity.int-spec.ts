@@ -79,6 +79,7 @@ describe('schema shape (integration)', () => {
         'clinical_summary',
         'consent',
         'department',
+        'device_event',
         'document',
         'encounter',
         'encounter_export',

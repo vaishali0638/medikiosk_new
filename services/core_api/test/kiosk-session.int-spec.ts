@@ -163,7 +163,7 @@ describe('kiosk session (integration)', () => {
         .set({ state: 'EXITED', ended_at: new Date() })
         .where('id', '=', session.id)
         .execute(),
-    ).rejects.toThrow(/kiosk_session_ended_is_wiped/);
+    ).rejects.toThrow(/kiosk_session_exit_is_wiped/);
   });
 
   it('expires sessions abandoned past the inactivity window', async () => {
@@ -177,7 +177,10 @@ describe('kiosk session (integration)', () => {
     expect(await repo.expireAbandoned(120)).toBe(1);
 
     expect((await repo.findById(stale.id))?.state).toBe('EXPIRED');
-    expect((await repo.findById(stale.id))?.wiped_at).toBeInstanceOf(Date);
+    // No wipe attestation, deliberately. The server is closing a row for a device it has
+    // not heard from — the crashed kiosk this sweep exists for is exactly the one that
+    // never wiped, and claiming otherwise recorded a fact nobody established.
+    expect((await repo.findById(stale.id))?.wiped_at).toBeNull();
     expect((await repo.findById(fresh.id))?.state).toBe('CREATED');
   });
 

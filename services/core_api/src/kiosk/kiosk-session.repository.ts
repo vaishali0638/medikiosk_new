@@ -197,11 +197,19 @@ export class KioskSessionRepository {
    * actually guarantees no session stays open holding a screen. It runs server-side in
    * addition to the client's own timer, because a kiosk that crashed or lost power never
    * gets to run its timer at all.
+   *
+   * Sessions closed this way carry no wipe attestation, and `medikiosk_sessions_ended_without_wipe`
+   * counts them. That number is not noise: it is the count of devices that may still be
+   * holding a patient's data, and it should be investigated rather than tuned away.
    */
   async expireAbandoned(inactivitySeconds: number): Promise<number> {
     const result = await this.db
       .updateTable('kiosk_session')
-      .set({ state: 'EXPIRED', ended_at: sql<Date>`now()`, wiped_at: sql<Date>`now()` })
+      // `wiped_at` is deliberately NOT set. The server is closing a row for a device it
+      // has not heard from — the crashed or powered-off kiosk this sweep exists for is
+      // exactly the one that never wiped. Writing an attestation here would record a fact
+      // nobody established, and would hide the sessions an operator most needs to see.
+      .set({ state: 'EXPIRED', ended_at: sql<Date>`now()` })
       .where('ended_at', 'is', null)
       .where(
         'last_activity_at',
