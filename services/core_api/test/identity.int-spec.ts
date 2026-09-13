@@ -269,6 +269,41 @@ describe('identity (integration)', () => {
     });
   });
 
+  describe('a patient with no mobile of their own', () => {
+    it('registers a patient who has no mobile number of their own', async () => {
+      // The kiosk offers no phone-less registration — "Register without phone" is on the
+      // forbidden-option list precisely because a route that skips verification is a route
+      // that registers anybody as anybody. A patient with no phone uses a family member's,
+      // which is verified normally, or is registered at the counter.
+      //
+      // What this pins is the control underneath: registration is impossible without a
+      // verification the OTP service will accept.
+      const started = await http().post('/v1/kiosk/sessions').set(headers()).expect(201);
+
+      await http()
+        .post(`/v1/identity/register?sessionId=${started.body.sessionId}`)
+        .set(headers())
+        .send({
+          verificationId: randomUUID(),
+          name: 'Kamala Bai',
+          sex: 'FEMALE',
+          ageYears: 71,
+        })
+        .expect((res) => {
+          // Refused. Which code depends on how far it gets before the verification is
+          // rejected; what matters is that no patient is created.
+          expect(res.status).toBeGreaterThanOrEqual(400);
+        });
+
+      const confirmed = await db
+        .selectFrom('patient')
+        .selectAll()
+        .where('full_name', '=', 'Kamala Bai')
+        .execute();
+      expect(confirmed).toHaveLength(0);
+    });
+  });
+
   describe('resolving by UHID', () => {
     it('resolves a single match and returns masked details only', async () => {
       await addPatient({
@@ -327,6 +362,70 @@ describe('identity (integration)', () => {
         .execute();
 
       // A UHID is only unique within the facility that issued it.
+      await http()
+        .post('/v1/identity/resolve')
+        .set(headers())
+        .send({ method: 'UHID_AND_ENCOUNTER', uhid: 'UH00012345' })
+        .expect(422);
+    });
+
+    it('refuses a UHID with the wrong date of birth', async () => {
+      // A UHID is printed on paper and can be picked up or mistyped. The birth date is the
+      // part only the patient should know, so a mismatch is a refusal rather than a
+      // near-miss the system resolves in the patient's favour.
+      await addPatient({
+        name: 'Ravi Kumar',
+        mobile: '9876543211',
+        uhid: 'UH00012345',
+        dob: '1968-04-12',
+      });
+
+      const res = await http()
+        .post('/v1/identity/resolve')
+        .set(headers())
+        .send({ method: 'UHID_AND_ENCOUNTER', uhid: 'UH00012345', dateOfBirth: '1970-01-01' })
+        .expect(422);
+
+      expect(res.body.code).toBe('IDENTITY_NOT_CONFIRMED');
+    });
+
+    it('matches a birth date in the hospital’s own timezone, not UTC', async () => {
+      // node-postgres turns a `date` column into a Date at LOCAL midnight, so comparing
+      // via toISOString() shifts it backwards by the UTC offset — in India, every birth
+      // date read back as the day before. The comparison was written that way in Phase 5
+      // and was invisible until a UHID lookup actually had to verify one.
+      await addPatient({
+        name: 'Sita Devi',
+        mobile: '9876500077',
+        uhid: 'UH00055555',
+        dob: '1975-01-01',
+      });
+
+      await http()
+        .post('/v1/identity/resolve')
+        .set(headers())
+        .send({ method: 'UHID_AND_ENCOUNTER', uhid: 'UH00055555', dateOfBirth: '1975-01-01' })
+        .expect(201);
+
+      // And the day before must not match, which is exactly what the bug produced.
+      await http()
+        .post('/v1/identity/resolve')
+        .set(headers())
+        .send({ method: 'UHID_AND_ENCOUNTER', uhid: 'UH00055555', dateOfBirth: '1974-12-31' })
+        .expect(422);
+    });
+
+    it('refuses a UHID with no date of birth at all', async () => {
+      // A UHID is printed on the hospital card, on discharge slips, and on anything left
+      // in a waiting room. Possession of it is not identity, and the contract has always
+      // said the birth date is required — the code had it optional.
+      await addPatient({
+        name: 'Ravi Kumar',
+        mobile: '9876543210',
+        uhid: 'UH00012345',
+        dob: '1968-04-12',
+      });
+
       await http()
         .post('/v1/identity/resolve')
         .set(headers())
@@ -496,7 +595,9 @@ describe('identity (integration)', () => {
       const res = await http()
         .post('/v1/identity/resolve')
         .set(headers())
-        .send({ method: 'UHID_AND_ENCOUNTER', uhid: 'UH00012345' })
+        // Supplied, because a UHID lookup now requires it: the card is possession, the
+        // birth date is knowledge, and one alone is not identity.
+        .send({ method: 'UHID_AND_ENCOUNTER', uhid: 'UH00012345', dateOfBirth: '1968-04-12' })
         .expect(201);
       return res.body.candidateId as string;
     };

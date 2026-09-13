@@ -231,6 +231,20 @@ export class IdentityService {
   ): Promise<PatientRow[]> {
     switch (request.method) {
       case 'UHID_AND_ENCOUNTER': {
+        // A UHID alone is possession of a piece of paper. It is printed on the hospital
+        // card, on every discharge slip, and on anything a patient leaves in a waiting
+        // room — so on its own it is not evidence of identity, and the schema has always
+        // said the birth date is required. It was optional in the code and, worse, was
+        // only ever used to disambiguate MULTIPLE matches: with a single UHID match
+        // `narrowByBirth` returned early and never compared it at all. A UHID picked up
+        // off a discarded slip resolved with any date of birth the caller invented.
+        if (!request.dateOfBirth && request.yearOfBirth === undefined) {
+          // Returning no candidates rather than throwing: `resolve` already records the
+          // attempt and refuses with the one neutral message, so a caller cannot tell
+          // "no such UHID" from "you did not supply a birth date".
+          return [];
+        }
+
         const rows = await this.db
           .selectFrom('patient')
           .innerJoin('patient_identifier', 'patient_identifier.patient_id', 'patient.id')
@@ -242,10 +256,12 @@ export class IdentityService {
           .where('patient_identifier.issued_by', '=', context.hospitalId)
           .execute();
 
-        // A UHID is printed on paper and can be picked up or mistyped, so it is treated
-        // as a lookup key rather than proof. The birth date the patient supplies is the
-        // part only they should know.
-        return this.narrowByBirth(rows, request.dateOfBirth, request.yearOfBirth);
+        // VERIFIED, not merely narrowed. `narrowByBirth` filters a list and skips the
+        // comparison entirely when there is one candidate, which is exactly the common
+        // case for a UHID.
+        return rows.filter((row) =>
+          this.birthMatches(row, request.dateOfBirth, request.yearOfBirth),
+        );
       }
 
       case 'MOBILE_OTP': {
@@ -280,6 +296,21 @@ export class IdentityService {
    * Only ever narrows. If the patient supplies nothing, the full set is returned and the
    * caller refuses it as ambiguous — a missing answer must not be treated as a match.
    */
+  /**
+   * Whether a candidate's stored birth date matches what the caller supplied.
+   *
+   * False when the patient record holds no birth date. There is nothing to check against,
+   * and treating missing data as a match turns an absent value into a passed factor —
+   * which is the direction that fails open.
+   */
+  private birthMatches(row: PatientRow, dateOfBirth?: string, yearOfBirth?: number): boolean {
+    if (!row.date_of_birth) return false;
+    const stored = new Date(row.date_of_birth);
+    if (dateOfBirth) return localIsoDate(stored) === dateOfBirth;
+    if (yearOfBirth !== undefined) return stored.getFullYear() === yearOfBirth;
+    return false;
+  }
+
   private narrowByBirth(
     rows: PatientRow[],
     dateOfBirth?: string,
@@ -288,12 +319,7 @@ export class IdentityService {
     if (rows.length <= 1) return rows;
     if (!dateOfBirth && yearOfBirth === undefined) return rows;
 
-    return rows.filter((row) => {
-      if (!row.date_of_birth) return false;
-      const stored = new Date(row.date_of_birth);
-      if (dateOfBirth) return stored.toISOString().slice(0, 10) === dateOfBirth;
-      return stored.getUTCFullYear() === yearOfBirth;
-    });
+    return rows.filter((row) => this.birthMatches(row, dateOfBirth, yearOfBirth));
   }
 
   /** Records every attempt, successful or not. A failed lookup is as interesting as a hit. */
@@ -336,4 +362,20 @@ export class IdentityService {
     this.sweepExpiredCandidates();
     return this.candidates.size;
   }
+}
+
+/**
+ * A `date` column as YYYY-MM-DD, read in the server's own timezone.
+ *
+ * node-postgres turns a `date` into a Date at LOCAL midnight, so `toISOString()` shifts it
+ * backwards by the UTC offset — in India, +05:30, every birth date came back as the day
+ * before. The comparison was written that way in Phase 5 and was invisible for twelve
+ * phases because `narrowByBirth` skipped it whenever there was a single candidate, which
+ * for a UHID lookup is every time.
+ */
+function localIsoDate(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

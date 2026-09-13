@@ -266,6 +266,55 @@ describe('clinical intake (integration)', () => {
     });
   });
 
+  describe('a patient who declines to answer', () => {
+    beforeEach(publishQuestionnaire);
+
+    it('records a refusal to answer as an answer, not as a gap', async () => {
+      // "I prefer to tell the doctor" is a decision the patient made, and it is clinically
+      // different from a question nobody asked. Storing it as an absence would lose that,
+      // and the doctor would read silence where the patient meant "ask me in the room".
+      await answer({
+        questionId: 'smoking',
+        selectedOptionIds: ['PREFER_TO_DISCUSS_WITH_DOCTOR'],
+      }).expect(201);
+
+      const row = await db
+        .selectFrom('questionnaire_response')
+        .selectAll()
+        .where('question_id', '=', 'smoking')
+        .executeTakeFirstOrThrow();
+
+      const stored = row.answer as { selectedOptionIds?: string[] };
+      expect(stored.selectedOptionIds).toEqual(['PREFER_TO_DISCUSS_WITH_DOCTOR']);
+
+      const review = await http()
+        .get(`/v1/intakes/${preCheckinId}/answers?language=en`)
+        .set(headers())
+        .expect(200);
+
+      const item = review.body.items.find(
+        (i: { questionId: string }) => i.questionId === 'smoking',
+      );
+      expect(item.answered).toBe(true);
+    });
+
+    it('does not let the interview advance past a sensitive question without an answer', async () => {
+      // Declining moves the patient on; ignoring it does not. Otherwise "I would rather
+      // not say" and "the kiosk skipped it" become the same record.
+      const before = await http()
+        .get(`/v1/intakes/${preCheckinId}/next?language=en`)
+        .set(headers())
+        .expect(200);
+
+      const after = await http()
+        .get(`/v1/intakes/${preCheckinId}/next?language=en`)
+        .set(headers())
+        .expect(200);
+
+      expect(after.body.question?.id).toBe(before.body.question?.id);
+    });
+  });
+
   describe('consent', () => {
     beforeEach(publishQuestionnaire);
 

@@ -242,6 +242,48 @@ describe('opening a walk-in visit at the kiosk (integration)', () => {
     expect(row.arrival_kiosk_id).toBe(fx.kioskId);
   });
 
+  it('opens a second visit for a patient who has been before', async () => {
+    await confirmIdentity();
+    const first = await openVisit().expect(201);
+
+    // A returning patient is the normal case, not an edge case. The one-visit-per-session
+    // rule must not become one-visit-per-patient: they come back next month.
+    const secondSession = await http().post('/v1/kiosk/sessions').set(headers()).expect(201);
+    const consent = await db.selectFrom('consent').select('patient_id').executeTakeFirstOrThrow();
+    await db
+      .updateTable('kiosk_session')
+      .set({ state: 'IDENTITY_CONFIRMED', patient_id: consent.patient_id })
+      .where('id', '=', secondSession.body.sessionId)
+      .execute();
+
+    const second = await http()
+      .post(`/v1/kiosk/sessions/${secondSession.body.sessionId}/visit`)
+      .set(headers())
+      .send({ departmentCode: 'AYU-OPD' })
+      .expect(201);
+
+    expect(second.body.preCheckinId).not.toBe(first.body.preCheckinId);
+    expect(await db.selectFrom('pre_checkin').selectAll().execute()).toHaveLength(2);
+  });
+
+  it('leaves an unattended visit with no token and no encounter', async () => {
+    // A no-show: the patient opened a visit and walked away. Nothing must be queued on
+    // their behalf, and no clinical encounter must exist for a consultation that did not
+    // happen — an encounter is created only when the hospital issues a token.
+    await confirmIdentity();
+    const opened = await openVisit().expect(201);
+
+    const visit = await db
+      .selectFrom('pre_checkin')
+      .selectAll()
+      .where('id', '=', opened.body.preCheckinId)
+      .executeTakeFirstOrThrow();
+
+    expect(visit.state).toBe('DRAFT');
+    expect(await db.selectFrom('token_request').selectAll().execute()).toHaveLength(0);
+    expect(await db.selectFrom('encounter').selectAll().execute()).toHaveLength(0);
+  });
+
   it('records the origin so a walk-in is distinguishable in the audit trail', async () => {
     await confirmIdentity();
     await openVisit().expect(201);

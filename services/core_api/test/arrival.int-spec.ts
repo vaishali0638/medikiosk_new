@@ -244,6 +244,45 @@ describe('arrival (integration)', () => {
     });
   });
 
+  describe('the patient decides', () => {
+    it('refuses when the patient does not confirm the masked details', async () => {
+      // The masked confirmation is the last point at which a wrong-patient arrival can be
+      // caught by the only party who can tell — the person standing there. `identityConfirmed`
+      // is a literal true in the contract, so "no" and "field omitted" are both refusals and
+      // neither can be defaulted into a yes.
+      const { token, preCheckinId } = await issueQr();
+
+      const checkIn = await http()
+        .post('/v1/arrival/check-in')
+        .set(headers())
+        .send({ kioskId: 'MK-OPD-01', qrPayload: token })
+        .expect(201);
+
+      const handle = checkIn.body.arrivalId as string;
+
+      await http()
+        .post(`/v1/arrival/${handle}/confirm`)
+        .set(headers())
+        .send({ identityConfirmed: false, changedSections: [] })
+        .expect(400);
+
+      await http()
+        .post(`/v1/arrival/${handle}/confirm`)
+        .set(headers())
+        .send({ changedSections: [] })
+        .expect(400);
+
+      // Nothing moved: no arrival, and so no route to a token.
+      const visit = await db
+        .selectFrom('pre_checkin')
+        .selectAll()
+        .where('id', '=', preCheckinId)
+        .executeTakeFirstOrThrow();
+      expect(visit.arrival_confirmed_at).toBeNull();
+      expect(visit.state).not.toBe('ARRIVAL_CONFIRMED');
+    });
+  });
+
   describe('forgery and tampering', () => {
     it('refuses a tampered payload', async () => {
       const { token } = await issueQr();
@@ -288,6 +327,65 @@ describe('arrival (integration)', () => {
   });
 
   describe('facility binding', () => {
+    it('refuses a QR presented at a kiosk in another branch', async () => {
+      // A hospital with two sites shares a hospital id. Binding only to the hospital would
+      // let a code issued for the main building be used at a satellite clinic, where the
+      // patient's department and their doctor are not.
+      const { token } = await issueQr();
+
+      const otherBranch = await db
+        .insertInto('branch')
+        .values({ hospital_id: fx.hospitalId, code: 'ANNEXE', name: 'Annexe' })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      await db
+        .insertInto('department')
+        .values({
+          branch_id: otherBranch.id,
+          code: 'AYU-OPD-2',
+          name: 'Ayurveda OPD (annexe)',
+          ayush_system: 'AYURVEDA',
+        })
+        .execute();
+      await db
+        .insertInto('kiosk_device')
+        .values({ branch_id: otherBranch.id, code: 'MK-ANNEXE-01' })
+        .execute();
+
+      await http()
+        .post('/v1/arrival/check-in')
+        .set({ ...headers(), [KIOSK_DEVICE_HEADER]: 'MK-ANNEXE-01' })
+        .send({ kioskId: 'MK-ANNEXE-01', qrPayload: token })
+        .expect(422);
+    });
+
+    it('refuses a QR issued for another department', async () => {
+      // The department is bound into the signed payload, so a patient cannot take a
+      // dermatology code to the Ayurveda queue and be counted in it.
+      const { token } = await issueQr();
+
+      const otherDepartment = await db
+        .insertInto('department')
+        .values({
+          branch_id: fx.branchId,
+          code: 'UNA-OPD-X',
+          name: 'Unani OPD',
+          ayush_system: 'UNANI',
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+
+      // Move the visit to a department the code was not issued for. The payload still
+      // names the old one, so the two disagree and the scan is refused.
+      await db.updateTable('pre_checkin').set({ department_id: otherDepartment.id }).execute();
+
+      await http()
+        .post('/v1/arrival/check-in')
+        .set(headers())
+        .send({ kioskId: 'MK-OPD-01', qrPayload: token })
+        .expect(422);
+    });
+
     it('refuses a QR presented at another hospital', async () => {
       const { token } = await issueQr();
 
