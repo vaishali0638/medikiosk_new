@@ -25,3 +25,10 @@ process.env['OBJECT_STORE_ADAPTER'] ??= 'local';
 process.env['OBJECT_STORE_LOCAL_ROOT'] ??= `${tmpdir()}/medikiosk-test-objects`;
 process.env['OBJECT_ENCRYPTION_KEY'] ??= 'c'.repeat(48);
 process.env['MALWARE_SCANNER'] ??= 'heuristic';
+
+// Same reason: the doctor dashboard's identity provider and EMR adapter are chosen when
+// ConfigModule is evaluated, so setting these in a beforeAll leaves the app running the
+// fail-closed defaults and every sign-in returns 401.
+process.env['STAFF_IDP'] ??= 'sandbox';
+process.env['EMR_EXPORT_ADAPTER'] ??= 'sandbox';
+process.env['DOCUMENT_LINK_KEY'] ??= 'd'.repeat(48);

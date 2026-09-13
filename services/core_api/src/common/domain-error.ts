@@ -23,6 +23,10 @@ const STATUS_BY_CODE: Readonly<Record<ErrorCode, HttpStatus>> = {
   HIS_UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
   RATE_LIMITED: HttpStatus.TOO_MANY_REQUESTS,
   SESSION_EXPIRED: HttpStatus.GONE,
+  NOT_AUTHENTICATED: HttpStatus.UNAUTHORIZED,
+  // 403, and deliberately the same status and body whether the record does not exist or
+  // exists in another department. A clinician probing ids must not be able to tell which.
+  NOT_AUTHORISED: HttpStatus.FORBIDDEN,
   INVALID_STATE_TRANSITION: HttpStatus.CONFLICT,
   INTERNAL_ERROR: HttpStatus.INTERNAL_SERVER_ERROR,
 };

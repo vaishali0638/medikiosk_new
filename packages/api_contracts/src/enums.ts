@@ -161,6 +161,18 @@ export const ANSWER_MODALITIES = ['TOUCH', 'VOICE', 'TEXT', 'DOCUMENT', 'IMPORTE
 export type AnswerModality = (typeof ANSWER_MODALITIES)[number];
 
 /** How a follow-up item compares with the last clinician-verified visit. */
+export const STAFF_ROLES = ['CLINICIAN', 'GOVERNANCE_REVIEWER', 'OPERATIONS'] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export const EXPORT_STATES = [
+  'PENDING',
+  'SENT',
+  'ACKNOWLEDGED',
+  'FAILED',
+  'RECONCILIATION_REQUIRED',
+] as const;
+export type ExportState = (typeof EXPORT_STATES)[number];
+
 export const FOLLOW_UP_CHANGE_KINDS = ['UNCHANGED', 'CHANGED', 'NOT_CONFIRMED'] as const;
 export type FollowUpChangeKind = (typeof FOLLOW_UP_CHANGE_KINDS)[number];
 
@@ -224,6 +236,7 @@ export const SQL_ENUMS = {
   provenance_source: PROVENANCE_SOURCES,
   answer_modality: ANSWER_MODALITIES,
   follow_up_change_kind: FOLLOW_UP_CHANGE_KINDS,
+  staff_role: STAFF_ROLES,
   triage_status_kind: TRIAGE_STATUSES,
   governance_state: GOVERNANCE_STATES,
   outbox_state: OUTBOX_STATES,

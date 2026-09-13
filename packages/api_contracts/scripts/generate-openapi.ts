@@ -513,11 +513,54 @@ const endpoints: readonly EndpointSpec[] = [
     phase: '12',
   },
   {
+    method: 'post',
+    path: '/doctor/session',
+    summary:
+      'Exchange a staff identity-provider credential for a session. MediKiosk holds no ' +
+      'staff password and cannot create an account.',
+    tag: 'doctor',
+    status: 'implemented',
+    phase: '13',
+  },
+  {
+    method: 'get',
+    path: '/doctor/encounters/{encounterId}',
+    summary:
+      'The case: draft with its unverified banner, documents with confidence and ' +
+      'short-lived signed links, and the follow-up delta. Every view is audited.',
+    tag: 'doctor',
+    status: 'implemented',
+    phase: '13',
+  },
+  {
+    method: 'post',
+    path: '/doctor/encounters/{encounterId}/confirm',
+    summary:
+      'The clinician confirms the record. Writes a new CLINICIAN-VERIFIED summary rather ' +
+      'than overwriting the draft.',
+    tag: 'doctor',
+    status: 'implemented',
+    phase: '13',
+  },
+  {
+    method: 'post',
+    path: '/doctor/encounters/{encounterId}/export',
+    summary:
+      'Export a confirmed record to the EMR. Refuses an unconfirmed one; idempotent per ' +
+      'encounter; an uncertain outcome is reconciled, never blindly retried.',
+    tag: 'doctor',
+    status: 'implemented',
+    phase: '13',
+    idempotent: true,
+  },
+  {
     method: 'get',
     path: '/doctor/worklist',
-    summary: 'Authorised clinician worklist.',
+    summary:
+      'Authorised clinician worklist, scoped to their department in the query. Names ' +
+      'masked; searchable by token or UHID only.',
     tag: 'doctor',
-    status: 'not-implemented',
+    status: 'implemented',
     phase: '13',
   },
   {

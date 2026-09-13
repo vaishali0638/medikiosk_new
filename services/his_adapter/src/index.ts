@@ -92,6 +92,14 @@ export abstract class HisAdapter {
 }
 
 export {
+  EmrExportAdapter,
+  SandboxEmrExportAdapter,
+  UnconfiguredEmrExportAdapter,
+  type EmrExportRequest,
+  type EmrExportResult,
+} from './export.adapter';
+
+export {
   SandboxHisAdapter,
   UnconfiguredHisAdapter,
   type SandboxBehaviour,

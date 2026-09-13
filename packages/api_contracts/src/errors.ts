@@ -27,6 +27,8 @@ export const ERROR_CODES = [
   'HIS_UNAVAILABLE',
   'RATE_LIMITED',
   'SESSION_EXPIRED',
+  'NOT_AUTHENTICATED',
+  'NOT_AUTHORISED',
   'INVALID_STATE_TRANSITION',
   'INTERNAL_ERROR',
 ] as const;
@@ -63,6 +65,10 @@ export const PATIENT_MESSAGES: Readonly<Record<ErrorCode, string>> = {
   HIS_UNAVAILABLE: 'The hospital system could not be reached. Please speak to the counter.',
   RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
   SESSION_EXPIRED: 'This session has ended. Please start again.',
+  // Staff-facing, but the wording stays neutral: these codes can also be reached by an
+  // unauthenticated caller probing the API, who should learn nothing from the text.
+  NOT_AUTHENTICATED: 'Please sign in again.',
+  NOT_AUTHORISED: 'This record is not available to you.',
   INVALID_STATE_TRANSITION: 'This step cannot be completed right now.',
   INTERNAL_ERROR: 'Something went wrong. Please start again.',
 };

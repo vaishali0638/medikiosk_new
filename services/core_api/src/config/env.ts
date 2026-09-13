@@ -76,6 +76,13 @@ export const envSchema = z.object({
    * Feature flags. Everything not yet built is off, and a disabled feature must not
    * render in any UI — the kiosk reads these through /v1/kiosk/config.
    */
+  /** Signs short-lived document links for the doctor dashboard. */
+  DOCUMENT_LINK_KEY: z.string().min(32).optional(),
+  /** Which staff identity provider to use. Anything else means nobody can sign in. */
+  STAFF_IDP: z.enum(['sandbox', 'none']).default('none'),
+  /** Which EMR export adapter to use. Anything else exports nothing. */
+  EMR_EXPORT_ADAPTER: z.enum(['sandbox', 'none']).default('none'),
+
   FEATURE_ABHA: z.coerce.boolean().default(false),
   FEATURE_AI_SUMMARY: z.coerce.boolean().default(false),
   FEATURE_OCR: z.coerce.boolean().default(false),

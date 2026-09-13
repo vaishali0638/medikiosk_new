@@ -18,6 +18,8 @@ import type {
   PatientIdentifierType,
   PreCheckinState,
   ProvenanceSource,
+  StaffRole,
+  ExportState,
   QrNonceState,
   TokenRequestState,
   TriageStatus,
@@ -440,6 +442,57 @@ export interface ClinicalSummaryTable {
   correlation_id: string;
 }
 
+/** A member of hospital staff, as the identity provider describes them. */
+export interface StaffUserTable {
+  id: Generated<string>;
+  hospital_id: string;
+  /** The subject claim from the hospital's IdP. No password is ever stored here. */
+  subject: string;
+  display_name: string;
+  role: StaffRole;
+  /** Null means hospital-wide, which is for governance and operations, not for doctors. */
+  department_id: string | null;
+  registration_number: string | null;
+  enabled: Generated<boolean>;
+  created_at: Generated<Date>;
+}
+
+export interface StaffSessionTable {
+  id: Generated<string>;
+  staff_user_id: string;
+  /** SHA-256 of the bearer token; the token itself is shown once and never stored. */
+  token_hash: string;
+  issued_at: Generated<Date>;
+  expires_at: Date;
+  revoked_at: Date | null;
+  last_used_at: Date | null;
+}
+
+export interface BreakGlassAccessTable {
+  id: Generated<string>;
+  staff_user_id: string;
+  encounter_id: string;
+  reason: string;
+  accessed_at: Generated<Date>;
+  correlation_id: string;
+}
+
+export interface EncounterExportTable {
+  id: Generated<string>;
+  encounter_id: string;
+  idempotency_key: string;
+  state: ExportState;
+  attempt_count: Generated<number>;
+  his_record_ref: string | null;
+  last_error_code: string | null;
+  exported_by_user_id: string;
+  payload_sha256: string;
+  created_at: Generated<Date>;
+  updated_at: ManagedTimestamp;
+  version: RowVersion;
+  correlation_id: string;
+}
+
 export interface Database {
   hospital: HospitalTable;
   branch: BranchTable;
@@ -466,6 +519,10 @@ export interface Database {
   integration_outbox: IntegrationOutboxTable;
   intake_submission: IntakeSubmissionTable;
   clinical_summary: ClinicalSummaryTable;
+  staff_user: StaffUserTable;
+  staff_session: StaffSessionTable;
+  break_glass_access: BreakGlassAccessTable;
+  encounter_export: EncounterExportTable;
 }
 
 export type ConsentRow = Selectable<ConsentTable>;
@@ -487,4 +544,8 @@ export type IdentityAttemptRow = Selectable<IdentityAttemptTable>;
 export type DocumentRow = Selectable<DocumentTable>;
 export type OcrExtractionRow = Selectable<OcrExtractionTable>;
 export type AuditEventRow = Selectable<AuditEventTable>;
+export type StaffUserRow = Selectable<StaffUserTable>;
+export type StaffSessionRow = Selectable<StaffSessionTable>;
+export type EncounterExportRow = Selectable<EncounterExportTable>;
+export type EncounterRow = Selectable<EncounterTable>;
 export type NewAuditEvent = Insertable<AuditEventTable>;

@@ -75,11 +75,13 @@ describe('schema shape (integration)', () => {
       [
         'audit_event',
         'branch',
+        'break_glass_access',
         'clinical_summary',
         'consent',
         'department',
         'document',
         'encounter',
+        'encounter_export',
         'follow_up_delta',
         'governance_version',
         'hospital',
@@ -95,6 +97,8 @@ describe('schema shape (integration)', () => {
         'patient_identifier',
         'pre_checkin',
         'qr_nonce',
+        'staff_session',
+        'staff_user',
         'questionnaire_response',
         'token_request',
         'triage_status',
@@ -137,7 +141,8 @@ describe('schema shape (integration)', () => {
         FROM pg_tables t
        WHERE t.schemaname = 'public'
          AND t.tablename IN ('consent', 'pre_checkin', 'token_request', 'kiosk_session',
-                             'encounter', 'patient', 'document', 'integration_outbox')
+                             'encounter',
+        'encounter_export', 'patient', 'document', 'integration_outbox')
          AND NOT EXISTS (
            SELECT 1 FROM information_schema.columns c
             WHERE c.table_schema = 'public' AND c.table_name = t.tablename
