@@ -2,5 +2,23 @@
   "name": "@medikiosk/governance-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Clinical governance console (Next.js). Phase 14."
+  "description": "Clinical governance console. Authoring, approval, canary, publication and rollback.",
+  "scripts": {
+    "dev": "next dev -p 3003",
+    "build": "next build",
+    "start": "next start -p 3003",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@medikiosk/api-contracts": "0.1.0",
+    "next": "^15.1.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2"
+  }
 }

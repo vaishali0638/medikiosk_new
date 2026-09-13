@@ -1,3 +1,5 @@
+const isDev = process.env.NODE_ENV !== 'production';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -16,7 +18,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value:
               "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; " +
-              "script-src 'self' 'unsafe-inline'; connect-src 'self' " +
+              // 'unsafe-eval' in development only. Next's dev server compiles modules with
+              // eval for hot reload, and without it the client bundle throws on load, React
+              // never hydrates, and every form on the site is silently inert — the page
+              // renders correctly and simply does not respond. The production build needs
+              // no eval and does not get it.
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}; ` +
+              "connect-src 'self' " +
               (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'),
           },
         ],

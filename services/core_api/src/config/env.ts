@@ -76,6 +76,15 @@ export const envSchema = z.object({
    * Feature flags. Everything not yet built is off, and a disabled feature must not
    * render in any UI — the kiosk reads these through /v1/kiosk/config.
    */
+  /**
+   * Browser origins allowed to call this API, comma separated.
+   *
+   * Empty means none, which is correct for a deployment where the only clients are the
+   * kiosk (a native app, not subject to CORS) and server-side callers. The doctor and
+   * governance consoles are browser applications on their own origins and must be listed.
+   */
+  CORS_ALLOWED_ORIGINS: z.string().default(''),
+
   /** Signs short-lived document links for the doctor dashboard. */
   DOCUMENT_LINK_KEY: z.string().min(32).optional(),
   /** Which staff identity provider to use. Anything else means nobody can sign in. */

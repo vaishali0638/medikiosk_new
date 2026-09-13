@@ -220,6 +220,28 @@ describe('clinical governance console (integration)', () => {
       expect(res.body.code).toBe('VALIDATION_FAILED');
     });
 
+    it('tells the reviewer what is missing, unlike every patient-facing refusal', async () => {
+      const id = await draft();
+      await move(id, { to: 'IN_REVIEW' }).expect(201);
+      await approve(id, { role: 'AUTHOR', by: 'Dr Rao', at: now() }).expect(201);
+      await approve(id, {
+        role: 'CLINICAL_REVIEWER',
+        by: 'Dr Rao',
+        qualification: 'BAMS',
+        at: now(),
+      }).expect(201);
+
+      const res = await move(id, { to: 'APPROVED' }).expect(400);
+
+      // A kiosk gets one neutral sentence, because it stands in a public corridor and an
+      // error that explains itself is an oracle. A governance reviewer is authenticated,
+      // role-checked, and is the person who has to fix it — and the gate returns every
+      // problem at once precisely so they can be fixed in one pass. Withholding this left
+      // the console refusing releases with no way to tell why.
+      expect(res.body.detail).toContain('needs 2 distinct approvers');
+      expect(res.body.patientMessage).toBeDefined();
+    });
+
     it('accepts two distinct named approvers with a stated qualification', async () => {
       const id = await draft();
       await approveFully(id);

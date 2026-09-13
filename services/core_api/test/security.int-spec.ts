@@ -397,6 +397,23 @@ describe('security (integration)', () => {
       }
     });
 
+    it('discloses a reason only on the staff endpoints that opt in', async () => {
+      // `StaffFacingError` is the single deliberate exception to the neutral-error rule.
+      // Everything a patient or an unauthenticated caller can reach must stay silent.
+      const responses = [
+        await http().get('/v1/precheckins/not-a-uuid/documents').set(kiosk()),
+        await http().post('/v1/doctor/session').set(base()).send({ credential: 'x' }),
+        await http()
+          .post('/v1/identity/otp')
+          .set(kiosk())
+          .send({ mobile: 'nope', purpose: 'NEW_REGISTRATION' }),
+      ];
+
+      for (const res of responses) {
+        expect(res.body).not.toHaveProperty('detail');
+      }
+    });
+
     it('does not reveal whether a mobile number belongs to a patient', async () => {
       const known = await http()
         .post('/v1/identity/otp')

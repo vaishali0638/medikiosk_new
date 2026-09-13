@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { apiError, CORRELATION_ID_HEADER } from '@medikiosk/api-contracts';
 import type { Request, Response } from 'express';
-import { DomainError } from './domain-error';
+import { DomainError, StaffFacingError } from './domain-error';
 import { InvalidStateTransitionError } from '../state-machines';
 import { redact } from './redact';
 import type { CorrelatedRequest } from './correlation-id.middleware';
@@ -33,6 +33,18 @@ export class DomainExceptionFilter implements ExceptionFilter {
       (request as CorrelatedRequest).correlationId ??
       request.header(CORRELATION_ID_HEADER) ??
       '00000000-0000-4000-8000-000000000000';
+
+    // Checked before DomainError: it is a subclass, and the reason is the whole point.
+    if (exception instanceof StaffFacingError) {
+      this.logger.warn(
+        `${exception.code} correlationId=${correlationId} ${exception.internalDetail}`,
+      );
+      response.status(exception.getStatus()).json({
+        ...(exception.getResponse() as Record<string, unknown>),
+        detail: exception.internalDetail,
+      });
+      return;
+    }
 
     if (exception instanceof DomainError) {
       this.logger.warn(

@@ -1,0 +1,241 @@
+/* Colours mirror packages/design_tokens.
+
+   One addition the patient surfaces do not have: an "unverified" treatment. Red is never
+   used on a patient screen, but a clinician screen has to distinguish a generated draft
+   from a confirmed record at a glance, and that distinction has to survive a doctor
+   skimming at speed between patients. Amber, a left border and an explicit banner, all
+   three, because any one of them can be missed. */
+:root {
+  --mk-background: #ffffff;
+  --mk-primary-blue: #1565c0;
+  --mk-dark-blue: #0d47a1;
+  --mk-action-orange: #f57c00;
+  --mk-light-orange: #fff3e0;
+  --mk-success: #2e7d32;
+  --mk-text: #263238;
+  --mk-muted: #546e7a;
+  --mk-border: #d9e2f3;
+  --mk-unverified: #b26a00;
+  --mk-unverified-bg: #fff8e1;
+  --mk-alert: #c62828;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7f9fc;
+  color: var(--mk-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+}
+
+h1 {
+  color: var(--mk-dark-blue);
+  font-size: 26px;
+  margin: 0 0 4px;
+}
+
+h2 {
+  color: var(--mk-dark-blue);
+  font-size: 19px;
+  margin: 24px 0 8px;
+}
+
+h3 {
+  font-size: 16px;
+  margin: 16px 0 6px;
+  color: var(--mk-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+a {
+  color: var(--mk-primary-blue);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--mk-background);
+  border-bottom: 1px solid var(--mk-border);
+}
+
+.topbar .who {
+  color: var(--mk-muted);
+  font-size: 14px;
+}
+
+.card {
+  background: var(--mk-background);
+  border: 1px solid var(--mk-border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+/* The draft. Everything about this block says "not verified" without being read. */
+.draft {
+  border-left: 6px solid var(--mk-unverified);
+  background: var(--mk-unverified-bg);
+}
+
+.banner {
+  display: block;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--mk-unverified);
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.banner.verified {
+  color: var(--mk-success);
+}
+
+.verified-card {
+  border-left: 6px solid var(--mk-success);
+}
+
+.label {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #eceff1;
+  color: var(--mk-muted);
+  white-space: nowrap;
+}
+
+.label.ocr {
+  background: var(--mk-unverified-bg);
+  color: var(--mk-unverified);
+  font-weight: 600;
+}
+
+.label.verified {
+  background: #e8f5e9;
+  color: var(--mk-success);
+}
+
+.statement {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--mk-border);
+}
+
+.statement:last-child {
+  border-bottom: 0;
+}
+
+.statement .text {
+  flex: 1;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--mk-background);
+}
+
+th,
+td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mk-border);
+}
+
+th {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mk-muted);
+}
+
+tr.clickable:hover {
+  background: #f2f6fc;
+  cursor: pointer;
+}
+
+button {
+  font: inherit;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--mk-border);
+  background: var(--mk-background);
+  color: var(--mk-dark-blue);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+button.primary {
+  background: var(--mk-action-orange);
+  border-color: var(--mk-action-orange);
+  color: #fff;
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input,
+textarea {
+  font: inherit;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--mk-border);
+  border-radius: 8px;
+  background: var(--mk-background);
+  color: var(--mk-text);
+}
+
+textarea {
+  min-height: 120px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+}
+
+.error {
+  border-left: 6px solid var(--mk-alert);
+  background: #ffebee;
+  color: #8e1f1f;
+}
+
+.muted {
+  color: var(--mk-muted);
+  font-size: 14px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}

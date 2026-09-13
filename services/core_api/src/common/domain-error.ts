@@ -55,3 +55,26 @@ export class DomainError extends HttpException {
 }
 
 export { STATUS_BY_CODE };
+
+/**
+ * A failure whose reason may be shown to the caller.
+ *
+ * The default everywhere else is that `internalDetail` never leaves the server: a kiosk
+ * stands in a public corridor and an error that explains itself is an oracle for probing
+ * stolen codes and unknown ids.
+ *
+ * Staff surfaces are the exception, and only some of them. A governance reviewer refused a
+ * release is the person who has to fix it, and the gate deliberately returns every problem
+ * at once so they can be fixed in one pass — withholding that made the console refuse a
+ * release and leave the reviewer guessing whether they needed a second approver, a
+ * qualification, or a different version number.
+ *
+ * A distinct class rather than a flag, so every place that discloses a reason can be found
+ * by searching for the type.
+ */
+export class StaffFacingError extends DomainError {
+  constructor(code: ErrorCode, correlationId: string, detail: string) {
+    super(code, correlationId, detail);
+    this.name = 'StaffFacingError';
+  }
+}

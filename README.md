@@ -23,8 +23,8 @@ anything before it reaches the EMR.
 ```
 apps/kiosk_flutter     Flutter kiosk client (Android 12+, lock-task mode)
 apps/patient_pwa       Patient pre-check-in PWA (Next.js)
-apps/doctor_web        Doctor dashboard                    [placeholder — Phase 13]
-apps/governance_web    Clinical governance console         [placeholder — Phase 14]
+apps/doctor_web        Clinician dashboard (Next.js, :3002)
+apps/governance_web    Clinical governance console (Next.js, :3003)
 services/core_api      NestJS modular monolith
 services/his_adapter   HIS/queue adapter interface + sandbox
 services/ai_worker     Python ASR/OCR/summary workers      [placeholder — Phase 10/11]

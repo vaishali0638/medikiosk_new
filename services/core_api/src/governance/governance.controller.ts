@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nest
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { GOVERNANCE_STATES } from '@medikiosk/api-contracts';
-import { DomainError } from '../common/domain-error';
+import { DomainError, StaffFacingError } from '../common/domain-error';
 import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { StaffAuthGuard, type StaffRequest } from '../staff/staff-auth.guard';
 import { ReleaseService } from './release.service';
@@ -100,16 +100,33 @@ export class GovernanceController {
       throw new DomainError('VALIDATION_FAILED', req.correlationId, 'bad transition payload');
     }
 
-    const row = await this.releases.transition({
-      versionId: releaseId,
-      to: parsed.data.to,
-      actor: req.staff,
-      correlationId: req.correlationId,
-      note: parsed.data.note,
-      effectiveFrom: parsed.data.effectiveFrom ? new Date(parsed.data.effectiveFrom) : undefined,
-      canaryKioskCodes: parsed.data.canaryKioskCodes,
-      rollbackReason: parsed.data.rollbackReason,
-    });
+    // The refusal reason reaches THIS caller.
+    //
+    // Everywhere else the internal detail is withheld, because a kiosk stands in a public
+    // corridor and an error that explains itself is an oracle. A governance reviewer is
+    // authenticated, role-checked, and is the person who has to act on the reason — and
+    // Phase 14's gate deliberately returns every problem at once so they can be fixed in
+    // one pass. Hiding that behind "some information could not be accepted" made the
+    // console unusable: it refused a release and left the reviewer to guess whether they
+    // needed a second approver, a qualification, or a different version number.
+    let row: Awaited<ReturnType<ReleaseService['transition']>>;
+    try {
+      row = await this.releases.transition({
+        versionId: releaseId,
+        to: parsed.data.to,
+        actor: req.staff,
+        correlationId: req.correlationId,
+        note: parsed.data.note,
+        effectiveFrom: parsed.data.effectiveFrom ? new Date(parsed.data.effectiveFrom) : undefined,
+        canaryKioskCodes: parsed.data.canaryKioskCodes,
+        rollbackReason: parsed.data.rollbackReason,
+      });
+    } catch (error) {
+      if (error instanceof DomainError && error.internalDetail) {
+        throw new StaffFacingError(error.code, req.correlationId, error.internalDetail);
+      }
+      throw error;
+    }
 
     return {
       releaseId: row.id,
