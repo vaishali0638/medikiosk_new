@@ -17,9 +17,23 @@ export const envSchema = z.object({
   /** Redis connection string for BullMQ jobs and the integration outbox. */
   REDIS_URL: z.string().url().optional(),
 
-  /** Object storage for original documents. Phase 10 consumes these. */
+  /** Object storage for original documents. */
   OBJECT_STORE_ENDPOINT: z.string().url().optional(),
   OBJECT_STORE_BUCKET: z.string().min(1).optional(),
+  OBJECT_STORE_ADAPTER: z.enum(['local', 'unconfigured']).default('local'),
+  OBJECT_STORE_LOCAL_ROOT: z.string().min(1).optional(),
+  /**
+   * Documents are encrypted by the application before they reach the object store, so a
+   * storage administrator holds ciphertext.
+   */
+  OBJECT_ENCRYPTION_KEY: z.string().min(32).optional(),
+  OBJECT_ENCRYPTION_KEY_ID: z.string().min(1).default('dev'),
+  /**
+   * Malware scanning. Anything other than a configured scanner fails CLOSED — an
+   * unscanned upload accepted "just this once" is how a hospital becomes a malware
+   * distribution point with a waiting room.
+   */
+  MALWARE_SCANNER: z.enum(['heuristic', 'unconfigured']).default('unconfigured'),
 
   /**
    * SMS gateway. `sandbox` logs the message instead of sending it, which is why
@@ -103,6 +117,20 @@ export function assertProductionAdapters(env: Env): void {
   }
   if (!env.QR_SIGNING_KEY) {
     problems.push('QR_SIGNING_KEY is required in production');
+  }
+  if (!env.OBJECT_ENCRYPTION_KEY) {
+    problems.push('OBJECT_ENCRYPTION_KEY is required in production');
+  }
+  if (env.MALWARE_SCANNER !== 'unconfigured' && env.MALWARE_SCANNER === 'heuristic') {
+    problems.push(
+      'MALWARE_SCANNER=heuristic is not antivirus and cannot run in production; ' +
+        'configure a real scanner such as ClamAV',
+    );
+  }
+  if (env.OBJECT_STORE_ADAPTER === 'local') {
+    problems.push(
+      'OBJECT_STORE_ADAPTER=local writes to the container filesystem and cannot run in production',
+    );
   }
   if (!env.HIS_BASE_URL) {
     problems.push('HIS_BASE_URL is required in production');

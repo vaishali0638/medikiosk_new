@@ -393,10 +393,42 @@ const endpoints: readonly EndpointSpec[] = [
   },
   {
     method: 'post',
-    path: '/documents',
-    summary: 'Upload an original document and queue asynchronous processing.',
+    path: '/precheckins/{preCheckinId}/documents',
+    summary:
+      'Upload an original document as base64. Validated, malware-scanned and encrypted ' +
+      'before any row is written; extraction is queued and never blocks the visit.',
     tag: 'documents',
-    status: 'not-implemented',
+    status: 'implemented',
+    phase: '10',
+  },
+  {
+    method: 'get',
+    path: '/precheckins/{preCheckinId}/documents',
+    summary:
+      'Documents attached to a visit, with extraction state. Carries neither the ' +
+      'rejection reason nor any confidence score.',
+    tag: 'documents',
+    status: 'implemented',
+    phase: '10',
+  },
+  {
+    method: 'get',
+    path: '/documents/{documentId}/original',
+    summary:
+      'The original bytes, decrypted and re-hashed on the way out; a mismatch is refused ' +
+      'rather than served.',
+    tag: 'documents',
+    status: 'implemented',
+    phase: '10',
+  },
+  {
+    method: 'get',
+    path: '/documents/{documentId}/extraction',
+    summary:
+      'Extraction candidates for a document. Every field is labelled for verification ' +
+      'and none of it is a clinical record until a clinician confirms it.',
+    tag: 'documents',
+    status: 'implemented',
     phase: '10',
   },
   {

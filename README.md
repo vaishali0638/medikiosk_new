@@ -114,19 +114,20 @@ deployment does not provide:
 
 ## Build status
 
-| Phase | Scope                                                                  | Status                                          |
-| ----- | ---------------------------------------------------------------------- | ----------------------------------------------- |
-| 0     | Discovery, clinical governance, hospital sign-off                      | Not started — organisational                    |
-| 1     | Repo, design system, CI, health check                                  | Complete                                        |
-| 2     | Database, contracts, state machines                                    | Complete                                        |
-| 3     | Kiosk shell and session security                                       | Complete                                        |
-| 4     | Language, accessibility, consent                                       | Complete                                        |
-| 5     | Identity and patient matching                                          | Complete                                        |
-| 6     | Mobile pre-check-in and signed QR                                      | Complete                                        |
-| 7     | HIS/queue token adapter                                                | Complete                                        |
-| 8     | New registration and common clinical core                              | Complete — content is an unapproved placeholder |
-| **9** | **AYUSH modules**                                                      | **Engine complete** — no approved module exists |
-| 10–18 | OCR, AI, follow-up, doctor, governance, hardening, ops, pilot, release | Next: 10 — document capture                     |
+| Phase  | Scope                                                                     | Status                                          |
+| ------ | ------------------------------------------------------------------------- | ----------------------------------------------- |
+| 0      | Discovery, clinical governance, hospital sign-off                         | Not started — organisational                    |
+| 1      | Repo, design system, CI, health check                                     | Complete                                        |
+| 2      | Database, contracts, state machines                                       | Complete                                        |
+| 3      | Kiosk shell and session security                                          | Complete                                        |
+| 4      | Language, accessibility, consent                                          | Complete                                        |
+| 5      | Identity and patient matching                                             | Complete                                        |
+| 6      | Mobile pre-check-in and signed QR                                         | Complete                                        |
+| 7      | HIS/queue token adapter                                                   | Complete                                        |
+| 8      | New registration and common clinical core                                 | Complete — content is an unapproved placeholder |
+| 9      | AYUSH modules                                                             | Engine complete — no approved module exists     |
+| **10** | **Documents and OCR**                                                     | **Pipeline complete** — no OCR engine ships     |
+| 11–18  | AI summary, follow-up, doctor, governance, hardening, ops, pilot, release | Next: 11 — AI pre-consultation draft            |
 
 Every unbuilt capability is behind a feature flag that defaults to off, and a disabled
 feature must not appear in any UI.

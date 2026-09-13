@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { API_BASE_PATH } from '@medikiosk/api-contracts';
@@ -12,11 +13,15 @@ async function bootstrap(): Promise<void> {
   const env = loadEnv();
   assertProductionAdapters(env);
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
 
   app.use(helmet());
+  // Document uploads arrive as base64 in a JSON body. The limit is set above the
+  // 15 MB file cap plus encoding overhead, so an oversized file is refused by the
+  // document validator with a reason a patient can act on, not by the parser with a 413.
+  app.useBodyParser('json', { limit: '24mb' });
   app.setGlobalPrefix(API_BASE_PATH.replace(/^\//, ''), {
     exclude: ['health', 'health/ready'],
   });

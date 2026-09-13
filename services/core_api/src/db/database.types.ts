@@ -281,6 +281,11 @@ export interface DocumentTable {
   byte_size: string;
   sha256: string;
   state: Generated<DocumentState>;
+  /** Names the key the object was encrypted with, so keys can rotate. */
+  encryption_key_id: string | null;
+  /** Supplied by the patient's device. Untrusted; never used to build a path. */
+  original_filename: string | null;
+  rejection_reason: string | null;
   document_date: Date | null;
   uploaded_at: Generated<Date>;
   malware_scanned_at: Date | null;
@@ -299,6 +304,11 @@ export interface OcrExtractionTable {
   review_state: Generated<OcrReviewState>;
   reviewed_by: string | null;
   reviewed_at: Date | null;
+  attempt_count: Generated<number>;
+  next_attempt_at: Generated<Date>;
+  last_error_code: string | null;
+  claimed_at: Date | null;
+  claimed_by: string | null;
   created_at: Generated<Date>;
   updated_at: ManagedTimestamp;
   version: RowVersion;
@@ -422,5 +432,7 @@ export type PatientRow = Selectable<PatientTable>;
 export type GovernanceVersionRow = Selectable<GovernanceVersionTable>;
 export type OtpVerificationRow = Selectable<OtpVerificationTable>;
 export type IdentityAttemptRow = Selectable<IdentityAttemptTable>;
+export type DocumentRow = Selectable<DocumentTable>;
+export type OcrExtractionRow = Selectable<OcrExtractionTable>;
 export type AuditEventRow = Selectable<AuditEventTable>;
 export type NewAuditEvent = Insertable<AuditEventTable>;
