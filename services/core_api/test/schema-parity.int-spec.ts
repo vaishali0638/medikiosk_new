@@ -83,6 +83,7 @@ describe('schema shape (integration)', () => {
         'encounter',
         'encounter_export',
         'follow_up_delta',
+        'governance_transition',
         'governance_version',
         'hospital',
         'hospital_language',

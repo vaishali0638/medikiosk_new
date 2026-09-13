@@ -6,6 +6,7 @@ import {
 } from '@medikiosk/api-contracts';
 import { InvalidStateTransitionError, type StateMachine } from './state-machine';
 import { consentMachine, permitsClinicalIntake } from './consent.machine';
+import { governanceMachine } from './governance.machine';
 import { kioskSessionMachine } from './kiosk-session.machine';
 import { preCheckinMachine } from './pre-checkin.machine';
 import { tokenRequestMachine } from './token-request.machine';
@@ -235,5 +236,35 @@ describe('Consent safety properties', () => {
 
   it('supports withdrawal of a granted consent', () => {
     expect(consentMachine.canTransition('GRANTED', 'REVOKED')).toBe(true);
+  });
+});
+
+describe('governance release lifecycle', () => {
+  it('cannot publish content that was never reviewed', () => {
+    // The property the whole phase rests on. Approvals are checked on the
+    // IN_REVIEW -> APPROVED edge, and everything downstream inherits that check by being
+    // unreachable without it.
+    expect(governanceMachine.canTransition('DRAFT', 'PUBLISHED')).toBe(false);
+    expect(governanceMachine.canTransition('DRAFT', 'CANARY')).toBe(false);
+    expect(everyPathPassesThrough(governanceMachine, 'DRAFT', 'PUBLISHED', 'APPROVED')).toBe(true);
+    expect(everyPathPassesThrough(governanceMachine, 'DRAFT', 'APPROVED', 'IN_REVIEW')).toBe(true);
+  });
+
+  it('holds a canary to the same approvals as a full release', () => {
+    // A canary is a real release to fewer kiosks. The difference is blast radius, not
+    // scrutiny, so it sits after APPROVED rather than beside it.
+    expect(everyPathPassesThrough(governanceMachine, 'DRAFT', 'CANARY', 'APPROVED')).toBe(true);
+  });
+
+  it('lets a reviewer send a draft back', () => {
+    expect(governanceMachine.canTransition('IN_REVIEW', 'DRAFT')).toBe(true);
+  });
+
+  it('never returns a rolled-back version to circulation', () => {
+    // The version number is what a clinical record cites when it says which questionnaire
+    // a patient answered. It must keep meaning one thing forever.
+    for (const state of ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CANARY', 'PUBLISHED'] as const) {
+      expect(governanceMachine.canTransition('ROLLED_BACK', state)).toBe(false);
+    }
   });
 });

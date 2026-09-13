@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { sql } from 'kysely';
 import {
   applicableQuestions,
   compose,
@@ -42,6 +43,8 @@ export class QuestionnaireService {
     hospitalId: string,
     key: string,
     language: string,
+    /** The kiosk asking. Supplied where there is one; a patient's phone has none. */
+    kioskCode?: string,
   ): Promise<Questionnaire | undefined> {
     const row = await this.db
       .selectFrom('governance_version')
@@ -49,7 +52,19 @@ export class QuestionnaireService {
       .where('hospital_id', '=', hospitalId)
       .where('content_kind', '=', 'QUESTIONNAIRE')
       .where('content_key', '=', questionnaireKey(key, language))
-      .where('state', '=', 'PUBLISHED')
+      // A canary reaches only the kiosks it names; everything else gets the published
+      // version. Ordered so that when both exist for a canary kiosk, the canary wins —
+      // that is what being in the canary means.
+      .where((eb) =>
+        eb.or([
+          eb('state', '=', 'PUBLISHED'),
+          eb.and([
+            eb('state', '=', 'CANARY'),
+            eb(sql<boolean>`${kioskCode ?? null} = ANY(canary_kiosk_codes)`, '=', true),
+          ]),
+        ]),
+      )
+      .orderBy(sql`CASE WHEN state = 'CANARY' THEN 0 ELSE 1 END`)
       .executeTakeFirst();
 
     if (!row) return undefined;
@@ -57,7 +72,15 @@ export class QuestionnaireService {
     const approvals = Array.isArray(row.approvals) ? row.approvals : [];
     const parsed = questionnaireSchema.safeParse({
       ...(row.payload as Record<string, unknown>),
-      version: (row.payload as { version?: string }).version ?? row.semver,
+      // The REGISTRY semver, not the payload's own `version` field.
+      //
+      // Two sources of truth for one version number is the bug: the payload is authored
+      // text and can say anything, while the semver is what the approval gate checks, what
+      // a rollback moves between, and what is unique per key. With the payload winning, a
+      // release governed as 1.0.0 could hand the kiosk content calling itself
+      // 0.1.0-placeholder — and every answer would cite the claim rather than the release
+      // it actually came from.
+      version: row.semver,
       language,
       approvedBy: approvals.map((a) => (a as { by?: string }).by ?? 'UNKNOWN'),
     });
@@ -92,8 +115,10 @@ export class QuestionnaireService {
     coreKey: string,
     language: string,
     ayushSystem?: string | null,
+    /** The kiosk asking, so a canary reaches only the kiosks it names. */
+    kioskCode?: string,
   ): Promise<{ questionnaire: Questionnaire; moduleUsed: string | null } | undefined> {
-    const core = await this.findPublished(hospitalId, coreKey, language);
+    const core = await this.findPublished(hospitalId, coreKey, language, kioskCode);
     if (!core) return undefined;
 
     if (!ayushSystem) return { questionnaire: core, moduleUsed: null };
@@ -144,7 +169,15 @@ export class QuestionnaireService {
     const approvals = Array.isArray(row.approvals) ? row.approvals : [];
     const parsed = questionnaireSchema.safeParse({
       ...(row.payload as Record<string, unknown>),
-      version: (row.payload as { version?: string }).version ?? row.semver,
+      // The REGISTRY semver, not the payload's own `version` field.
+      //
+      // Two sources of truth for one version number is the bug: the payload is authored
+      // text and can say anything, while the semver is what the approval gate checks, what
+      // a rollback moves between, and what is unique per key. With the payload winning, a
+      // release governed as 1.0.0 could hand the kiosk content calling itself
+      // 0.1.0-placeholder — and every answer would cite the claim rather than the release
+      // it actually came from.
+      version: row.semver,
       language,
       approvedBy: approvals.map((a) => (a as { by?: string }).by ?? 'UNKNOWN'),
     });

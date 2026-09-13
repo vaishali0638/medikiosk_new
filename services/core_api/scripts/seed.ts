@@ -124,8 +124,10 @@ async function main(): Promise<void> {
             hospital_id: hospital.id,
             content_kind: 'QUESTIONNAIRE',
             content_key: 'common-core/en',
-            semver: '0.1.0',
+            semver: '0.1.0-placeholder',
             state: 'PUBLISHED',
+            published_by_user_id: 'SEED',
+            published_at: new Date(),
             payload: JSON.stringify(payload),
             author_actor_id: 'SEED',
             approvals: JSON.stringify([
@@ -159,6 +161,8 @@ async function main(): Promise<void> {
             content_key: `consent-notice/${language}`,
             semver: '1.0.0',
             state: 'PUBLISHED',
+            published_by_user_id: 'SEED',
+            published_at: new Date(),
             payload: JSON.stringify(payload),
             author_actor_id: 'SEED',
             approvals: JSON.stringify([

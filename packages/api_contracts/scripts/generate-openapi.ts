@@ -589,6 +589,44 @@ const endpoints: readonly EndpointSpec[] = [
   },
   {
     method: 'post',
+    path: '/governance/releases',
+    summary:
+      'Create a draft. Content is schema-validated at authoring, and the rollback pointer ' +
+      'is derived from whatever is live.',
+    tag: 'governance',
+    status: 'implemented',
+    phase: '14',
+  },
+  {
+    method: 'post',
+    path: '/governance/releases/{releaseId}/transition',
+    summary:
+      'Move a release along its lifecycle. The approval gate is checked on the ' +
+      'IN_REVIEW → APPROVED edge; publication is unreachable without it.',
+    tag: 'governance',
+    status: 'implemented',
+    phase: '14',
+  },
+  {
+    method: 'get',
+    path: '/governance/releases/{releaseId}/history',
+    summary: 'Every state change a release went through, with who made it.',
+    tag: 'governance',
+    status: 'implemented',
+    phase: '14',
+  },
+  {
+    method: 'get',
+    path: '/governance/unversioned',
+    summary:
+      'Required content this hospital has nothing published for, per language. The exit ' +
+      'criterion "no live content lacks a version" as a query rather than a promise.',
+    tag: 'governance',
+    status: 'implemented',
+    phase: '14',
+  },
+  {
+    method: 'post',
     path: '/governance/releases/{id}/approve',
     summary: 'Approve, publish or roll back governed clinical content.',
     tag: 'governance',

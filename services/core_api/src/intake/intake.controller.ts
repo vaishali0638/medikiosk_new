@@ -265,6 +265,8 @@ export class IntakeController {
       COMMON_CORE_KEY,
       tag,
       ayushSystem,
+      // So a canary reaches only the kiosks it names.
+      req.kiosk.deviceCode,
     );
 
     if (!composed) {

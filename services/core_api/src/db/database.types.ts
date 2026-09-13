@@ -103,6 +103,14 @@ export interface GovernanceVersionTable {
   approvals: Generated<unknown>;
   effective_from: Date | null;
   rollback_to_id: string | null;
+  /** Set together: a live version whose publisher is unknown cannot be reviewed. */
+  published_by_user_id: string | null;
+  published_at: Date | null;
+  /** Which kiosks a canary reaches. Empty means all, which is a full release. */
+  canary_kiosk_codes: Generated<string[]>;
+  rolled_back_at: Date | null;
+  rolled_back_by_user_id: string | null;
+  rollback_reason: string | null;
   created_at: Generated<Date>;
   updated_at: ManagedTimestamp;
   version: RowVersion;
@@ -493,6 +501,18 @@ export interface EncounterExportTable {
   correlation_id: string;
 }
 
+/** Every state change a release went through. What a governance committee reads. */
+export interface GovernanceTransitionTable {
+  id: Generated<string>;
+  governance_version_id: string;
+  from_state: GovernanceState | null;
+  to_state: GovernanceState;
+  actor_user_id: string;
+  note: string | null;
+  occurred_at: Generated<Date>;
+  correlation_id: string;
+}
+
 export interface Database {
   hospital: HospitalTable;
   branch: BranchTable;
@@ -500,6 +520,7 @@ export interface Database {
   hospital_language: HospitalLanguageTable;
   kiosk_device: KioskDeviceTable;
   governance_version: GovernanceVersionTable;
+  governance_transition: GovernanceTransitionTable;
   patient: PatientTable;
   patient_identifier: PatientIdentifierTable;
   consent: ConsentTable;
@@ -539,6 +560,7 @@ export type PreCheckinRow = Selectable<PreCheckinTable>;
 export type KioskSessionRow = Selectable<KioskSessionTable>;
 export type PatientRow = Selectable<PatientTable>;
 export type GovernanceVersionRow = Selectable<GovernanceVersionTable>;
+export type GovernanceTransitionRow = Selectable<GovernanceTransitionTable>;
 export type OtpVerificationRow = Selectable<OtpVerificationTable>;
 export type IdentityAttemptRow = Selectable<IdentityAttemptTable>;
 export type DocumentRow = Selectable<DocumentTable>;

@@ -53,6 +53,6 @@ import type { Env } from '../config/env';
           : new UnconfiguredEmrExportAdapter(),
     },
   ],
-  exports: [StaffAuthService, EncounterAccessService],
+  exports: [StaffAuthService, EncounterAccessService, StaffAuthGuard],
 })
 export class StaffModule {}

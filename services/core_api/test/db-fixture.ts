@@ -53,6 +53,8 @@ export async function publishConsentNotice(
       content_key: `consent-notice/${language}`,
       semver: '1.0.0',
       state: 'PUBLISHED',
+      published_by_user_id: 'SEED',
+      published_at: new Date(),
       payload: JSON.stringify({
         version,
         title: language === 'hi' ? 'गोपनीयता और सहमति' : 'Privacy and consent',

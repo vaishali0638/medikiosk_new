@@ -48,6 +48,8 @@ describe('consent API (integration)', () => {
         content_key: `consent-notice/${language}`,
         semver: '1.0.0',
         state: 'PUBLISHED',
+        published_by_user_id: 'SEED',
+        published_at: new Date(),
         payload: JSON.stringify(noticePayload(language, version)),
         author_actor_id: 'TEST',
         approvals: JSON.stringify([{ by: 'Dr Test', role: 'CLINICAL_REVIEWER' }]),
@@ -144,6 +146,8 @@ describe('consent API (integration)', () => {
           content_key: 'consent-notice/en',
           semver: '1.0.0',
           state: 'PUBLISHED',
+          published_by_user_id: 'SEED',
+          published_at: new Date(),
           // Missing purpose, fullText and dataCategories.
           payload: JSON.stringify({ version: 'v1.0', title: 'Broken' }),
           author_actor_id: 'TEST',
