@@ -167,6 +167,34 @@ export class IntakeController {
     return { questionId: question.id, revision };
   }
 
+  @Get(':preCheckinId/question/:questionId')
+  @ApiOperation({
+    summary:
+      'One question, for reopening a single answer from the review screen without ' +
+      'restarting the interview.',
+  })
+  async question(
+    @Req() req: KioskRequest,
+    @Param('preCheckinId') preCheckinId: string,
+    @Param('questionId') questionId: string,
+    @Query('language') language?: string,
+  ): Promise<unknown> {
+    const { questionnaire, lookup } = await this.load(req, preCheckinId, language);
+
+    // Served only if the question is APPLICABLE given the answers so far. A question the
+    // branching has ruled out is not one the patient can be sent back to: answering it
+    // would record something against a branch they are not on.
+    const question = this.questionnaires
+      .applicable(questionnaire, lookup)
+      .find((candidate) => candidate.id === questionId);
+
+    if (!question) {
+      throw new DomainError('VALIDATION_FAILED', req.correlationId, 'question not applicable');
+    }
+
+    return { question, questionnaireVersion: questionnaire.version };
+  }
+
   @Get(':preCheckinId/answers')
   @ApiOperation({
     summary: 'The structured answers for the review screen, each with its provenance.',

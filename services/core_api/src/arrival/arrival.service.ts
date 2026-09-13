@@ -14,7 +14,9 @@ import { QrNonceRepository } from './qr-nonce.repository';
 import type { KioskContext } from '../kiosk/kiosk-device.guard';
 
 /** The handle lives only for the few minutes a patient spends at the kiosk. */
-const ARRIVAL_HANDLE_TTL_SECONDS = 300;
+/** How long a rotated arrival or token handle stays usable. Shared with the walk-in
+ *  path so the two ways of arriving expire on the same clock. */
+export const ARRIVAL_HANDLE_TTL_SECONDS = 300;
 
 /**
  * Why an arrival was refused. Internal only — every one of these produces the same

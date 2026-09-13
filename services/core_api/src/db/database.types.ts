@@ -174,6 +174,8 @@ export interface PreCheckinTable {
   branch_id: string;
   department_id: string;
   encounter_id: string | null;
+  /** Set only for a visit opened at the kiosk by a walk-in patient. */
+  kiosk_session_id: string | null;
   visit_type: VisitType;
   appointment_ref: string | null;
   visit_window_start: Timestamp;

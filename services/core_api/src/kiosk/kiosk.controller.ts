@@ -7,11 +7,18 @@ import {
   type KioskConfigResponse,
   type KioskSession,
 } from '@medikiosk/api-contracts';
+import { z } from 'zod';
 import { DomainError } from '../common/domain-error';
 import { KioskConfigService } from './kiosk-config.service';
+import { KioskVisitService } from './kiosk-visit.service';
 import { KioskDeviceGuard, type KioskRequest } from './kiosk-device.guard';
 import { KioskSessionRepository } from './kiosk-session.repository';
 import type { KioskSessionRow } from '../db/database.types';
+
+const openVisitSchema = z.object({
+  /** The department this kiosk stands outside, or the one the AYUSH choice maps to. */
+  departmentCode: z.string().min(1).max(64),
+});
 
 @ApiTags('kiosk')
 @Controller('kiosk')
@@ -20,6 +27,7 @@ export class KioskController {
   constructor(
     private readonly config: KioskConfigService,
     private readonly sessions: KioskSessionRepository,
+    private readonly visits: KioskVisitService,
   ) {}
 
   @Get('config')
@@ -39,6 +47,35 @@ export class KioskController {
       req.correlationId,
     );
     return this.toResponse(row);
+  }
+
+  @Post('sessions/:id/visit')
+  @ApiOperation({
+    summary:
+      'Opens the visit for a walk-in patient whose identity is confirmed. Idempotent ' +
+      'per session; the patient is taken from the session, never from the body.',
+  })
+  async openVisit(
+    @Req() req: KioskRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<{ preCheckinId: string; departmentId: string }> {
+    const parsed = openVisitSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new DomainError('VALIDATION_FAILED', req.correlationId, 'bad visit payload');
+    }
+
+    const row = await this.visits.open({
+      sessionId: id,
+      departmentCode: parsed.data.departmentCode,
+      hospitalId: req.kiosk.hospitalId,
+      branchId: req.kiosk.branchId,
+      correlationId: req.correlationId,
+      actorId: `kiosk:${req.kiosk.deviceCode}`,
+    });
+    await this.visits.beginIntake(id);
+
+    return { preCheckinId: row.id, departmentId: row.department_id };
   }
 
   @Post('sessions/:id/activity')

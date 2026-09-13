@@ -223,6 +223,25 @@ class KioskStrings {
     'review.submitted.body':
         'The doctor will see it before your consultation. You can collect your token next.',
 
+    'demographics.title': 'Basic patient details',
+    'demographics.name': 'Name',
+    'demographics.age': 'Age in years',
+    'demographics.sex': 'Sex',
+    'demographics.female': 'Female',
+    'demographics.male': 'Male',
+    'demographics.other': 'Other',
+    'demographics.preferNot': 'Prefer not to say',
+    'demographics.mobile': 'Mobile',
+    'demographics.address': 'Address',
+    'demographics.duplicate.title': 'A similar hospital record was found',
+    'demographics.duplicate.body':
+        'Please tell us whether this is your record. Staff can help you at the counter if you are not sure.',
+    'demographics.duplicate.isMe': 'This is me',
+    'demographics.duplicate.notMe': 'This is not me',
+
+    'department.title': 'Which department are you here for?',
+    'department.subtitle': 'Choose the department you were told to attend.',
+
     'startup.title': 'Starting up',
     'startup.body': 'Preparing this kiosk.',
     'startup.unavailable': 'This kiosk is not ready for use.',
@@ -420,6 +439,25 @@ class KioskStrings {
     'review.submitted.title': 'आपकी जानकारी भेज दी गई है',
     'review.submitted.body':
         'डॉक्टर परामर्श से पहले इसे देख लेंगे। अब आप अपना टोकन ले सकते हैं।',
+
+    'demographics.title': 'रोगी का बुनियादी विवरण',
+    'demographics.name': 'नाम',
+    'demographics.age': 'आयु (वर्षों में)',
+    'demographics.sex': 'लिंग',
+    'demographics.female': 'महिला',
+    'demographics.male': 'पुरुष',
+    'demographics.other': 'अन्य',
+    'demographics.preferNot': 'बताना नहीं चाहते',
+    'demographics.mobile': 'मोबाइल',
+    'demographics.address': 'पता',
+    'demographics.duplicate.title': 'मिलता-जुलता अस्पताल रिकॉर्ड मिला है',
+    'demographics.duplicate.body':
+        'कृपया बताएं कि क्या यह आपका रिकॉर्ड है। यदि आप निश्चित नहीं हैं तो काउंटर पर कर्मचारी आपकी मदद करेंगे।',
+    'demographics.duplicate.isMe': 'यह मैं हूँ',
+    'demographics.duplicate.notMe': 'यह मैं नहीं हूँ',
+
+    'department.title': 'आप किस विभाग के लिए आए हैं?',
+    'department.subtitle': 'वह विभाग चुनें जहाँ आपको जाने को कहा गया है।',
 
     'startup.title': 'शुरू हो रहा है',
     'startup.body': 'यह कियोस्क तैयार किया जा रहा है।',

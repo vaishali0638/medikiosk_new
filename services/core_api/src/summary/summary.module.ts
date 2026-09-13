@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuditRepository } from '../audit/audit.repository';
 import { ConsentModule } from '../consent/consent.module';
 import { DocumentsModule } from '../documents/documents.module';
+import { KioskModule } from '../kiosk/kiosk.module';
 import { IntakeModule } from '../intake/intake.module';
 import { KioskDeviceGuard } from '../kiosk/kiosk-device.guard';
 import { PreCheckinModule } from '../precheckin/precheckin.module';
@@ -14,7 +15,7 @@ import { SummaryService } from './summary.service';
 import type { Env } from '../config/env';
 
 @Module({
-  imports: [ConsentModule, PreCheckinModule, IntakeModule, DocumentsModule],
+  imports: [ConsentModule, PreCheckinModule, IntakeModule, DocumentsModule, KioskModule],
   controllers: [SummaryController],
   providers: [
     ReviewService,

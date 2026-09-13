@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'api/api_client.dart';
+import 'api/documents_api.dart';
 import 'api/api_exception.dart';
 import 'config/consent_notice.dart';
 import 'config/kiosk_config.dart';
@@ -12,13 +13,22 @@ import 'platform/audio_guidance.dart';
 import 'platform/qr_scanner.dart';
 import 'platform/token_printer.dart';
 import 'platform/kiosk_lock.dart';
+import 'platform/document_camera.dart';
 import 'screens/arrival_screens.dart';
+import 'screens/ayush_screen.dart';
 import 'screens/consent_screen.dart';
+import 'screens/demographics_screen.dart';
+import 'screens/department_screen.dart';
 import 'screens/dialogs.dart';
+import 'screens/document_screens.dart';
 import 'screens/home_screen.dart';
+import 'screens/identity_screens.dart';
 import 'screens/language_screen.dart';
+import 'screens/question_screen.dart';
+import 'screens/review_screen.dart';
 import 'screens/status_screens.dart';
 import 'screens/token_screen.dart';
+import 'config/question.dart';
 import 'session/secure_wipe.dart';
 import 'session/session_manager.dart';
 import 'session/session_state.dart';
@@ -34,16 +44,39 @@ enum ShellView {
   consentFullNotice,
   consentDeclined,
   consentUnavailable,
+  // The mobile-QR arrival: the intake already happened on the patient's phone.
   scanQr,
   confirmVisit,
   changedSince,
   qrRejected,
+  // The kiosk-hosted journey, for a patient who arrives with nothing.
+  identityMethod,
+  identityMobile,
+  identityOtp,
+  identityUhid,
+  identityConfirm,
+  identityNotConfirmed,
+  demographics,
+  department,
+  ayush,
+  question,
+  addDocuments,
+  documentType,
+  imageQuality,
+  ocrStatus,
+  review,
   token,
   tokenPending,
   expired,
   error,
   offline,
 }
+
+/// Which of the two kiosk-hosted journeys the patient chose on the home screen.
+///
+/// They differ only in how identity is established — a new patient has no record to match
+/// against — and converge from the demographics step onward.
+enum JourneyKind { newRegistration, existingPatient }
 
 /// The kiosk shell: boot, lock-down, navigation, inactivity and session termination.
 ///
@@ -58,6 +91,7 @@ class KioskApp extends StatefulWidget {
     required this.scanner,
     required this.printer,
     required this.wipeBuilder,
+    this.documentCamera = const UnavailableDocumentCamera(),
     super.key,
   });
 
@@ -66,6 +100,7 @@ class KioskApp extends StatefulWidget {
   final AudioGuidance audio;
   final QrScanner scanner;
   final TokenPrinter printer;
+  final DocumentCamera documentCamera;
 
   /// Builds the wipe once the shell can supply its UI-state clearers.
   final SecureWipe Function(List<VoidCallback> uiStateClearers) wipeBuilder;
@@ -97,6 +132,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   String? _arrivalMaskedMobile;
   String? _arrivalHospital;
   String? _arrivalDepartment;
+
   String? _arrivalVisitType;
   String? _tokenHandle;
   String? _token;
@@ -105,7 +141,51 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   bool _printerAvailable = false;
   bool _printFailed = false;
 
+  // ---- the kiosk-hosted journey ----
+  JourneyKind? _journey;
+  final TextEditingController _uhidController = TextEditingController();
+  String _mobileDigits = '';
+  String _otpDigits = '';
+  String? _maskedMobile;
+  String? _verificationId;
+  String? _identityMaskedName;
+  String? _identityMaskedUhid;
+  int? _otpAttemptsRemaining;
+  String? _preCheckinId;
+  DepartmentOption? _department;
+  AyushSystem? _ayushSelected;
+  List<AyushSystem> _ayushAvailable = const <AyushSystem>[];
+  Question? _question;
+  int _answeredCount = 0;
+  int _totalApplicable = 0;
+  final Set<String> _selectedOptionIds = <String>{};
+  String? _textAnswer;
+  int? _scaleAnswer;
+  List<AttachedDocument> _documents = const <AttachedDocument>[];
+  CapturedDocument? _pendingCapture;
+  List<String> _qualityProblems = const <String>[];
+  bool _documentCaptureAvailable = false;
+
+  /// True while a single question was reopened from the review screen, so answering it
+  /// returns there instead of resuming the interview.
+  bool _editingFromReview = false;
+  List<ReviewItem> _reviewItems = const <ReviewItem>[];
+  List<ReviewDocument> _reviewDocuments = const <ReviewDocument>[];
+
+  /// A context from INSIDE the MaterialApp, for showing dialogs.
+  ///
+  /// `State.context` is the KioskApp element, which sits ABOVE the MaterialApp this build
+  /// method creates — so it has no Navigator and no MaterialLocalizations, and
+  /// `showDialog` against it throws. Every Exit button and the inactivity warning were
+  /// silently doing nothing as a result: the exception was swallowed by the unawaited
+  /// future behind the tap. The navigator key gives dialogs a context below the app.
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   KioskStrings get _strings => KioskStrings.of(_languageTag);
+
+  /// The department shown on the token. A mobile-QR arrival is told it by the server; a
+  /// walk-in chose it here, and there is no arrival response to read it from.
+  String get _departmentName => _arrivalDepartment ?? _department?.name ?? '';
 
   @visibleForTesting
   ShellView get view => _view;
@@ -120,6 +200,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _uhidController.dispose();
     _sessions?.dispose();
     super.dispose();
   }
@@ -193,8 +274,37 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _tokenRoom = null;
     _tokenQueueStatus = null;
     _printFailed = false;
+    _journey = null;
+    _uhidController.clear();
+    _mobileDigits = '';
+    _otpDigits = '';
+    _maskedMobile = null;
+    _verificationId = null;
+    _identityMaskedName = null;
+    _identityMaskedUhid = null;
+    _otpAttemptsRemaining = null;
+    _preCheckinId = null;
+    _department = null;
+    _ayushSelected = null;
+    _ayushAvailable = const <AyushSystem>[];
+    _question = null;
+    _answeredCount = 0;
+    _totalApplicable = 0;
+    _selectedOptionIds.clear();
+    _textAnswer = null;
+    _scaleAnswer = null;
+    _documents = const <AttachedDocument>[];
+    // The captured image is a photograph of a patient's prescription held in memory.
+    // Dropping the reference here is what keeps it out of the next patient's session.
+    _pendingCapture = null;
+    _qualityProblems = const <String>[];
+    _documentCaptureAvailable = false;
+    _editingFromReview = false;
+    _reviewItems = const <ReviewItem>[];
+    _reviewDocuments = const <ReviewDocument>[];
     // A camera preview holds the last frames it saw. Release it with everything else.
     unawaited(widget.scanner.stop());
+    unawaited(widget.documentCamera.stop());
     // Audio must not carry from one patient into the next. Fire-and-forget: the wipe
     // reports on what it can verify, and a stuck TTS engine must not block it.
     unawaited(widget.audio.stop());
@@ -216,7 +326,9 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     if (sessions == null || config == null) return;
 
     _timeoutDialogOpen = true;
-    final bool stayed = await showTimeoutWarning(context, _strings, config.session.wipe);
+    final BuildContext? dialogContext = _navigatorKey.currentContext;
+    if (dialogContext == null) return;
+    final bool stayed = await showTimeoutWarning(dialogContext, _strings, config.session.wipe);
     _timeoutDialogOpen = false;
 
     if (stayed) {
@@ -332,9 +444,10 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         return;
       }
 
-      // Phase 5 continues into identity. Until then the shell completes the session
-      // rather than pretending there is a next step.
-      await _endSession(SessionEndReason.completed, nextView: ShellView.home);
+      if (!mounted) return;
+      // Where consent leads depends on which door the patient came through. A mobile-QR
+      // patient never reaches here — their consent was given on the phone.
+      setState(() => _view = ShellView.identityMethod);
     } on ApiException catch (error) {
       _handleApiFailure(error);
     }
@@ -486,7 +599,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     final PrintResult result = await widget.printer.printToken(
       TokenSlip(
         token: token,
-        departmentName: _arrivalDepartment ?? '',
+        departmentName: _departmentName,
         room: _tokenRoom,
         queueStatus: _tokenQueueStatus,
       ),
@@ -495,8 +608,535 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     setState(() => _printFailed = !result.printed);
   }
 
+  // ---------------------------------------------------------------------------
+  // The kiosk-hosted journey: identity -> demographics -> department -> AYUSH ->
+  // intake -> documents -> review -> token.
+  // ---------------------------------------------------------------------------
+
+  /// Home -> language, remembering which journey the patient chose.
+  ///
+  /// Both journeys go through language and consent first. Asking someone to identify
+  /// themselves before they have been told what the kiosk will do with their information
+  /// is collecting an identifier without consent.
+  Future<void> _startJourney(JourneyKind kind) async {
+    final SessionManager? sessions = _sessions;
+    if (sessions == null) return;
+
+    try {
+      if (!sessions.hasActiveSession) await sessions.start();
+      if (!mounted) return;
+      setState(() {
+        _journey = kind;
+        _view = ShellView.language;
+      });
+    } on ApiException catch (error) {
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _sendOtp() async {
+    if (_mobileDigits.length != 10) return;
+    setState(() => _busy = true);
+
+    try {
+      final Map<String, dynamic> json = await widget.api.post(
+        '/v1/identity/otp',
+        <String, dynamic>{
+          'mobile': _mobileDigits,
+          // The purpose IS the journey. Sending the wrong one would have the server
+          // treating a new registration as a lookup against records that do not exist.
+          'purpose': _journey == JourneyKind.newRegistration
+              ? 'NEW_REGISTRATION'
+              : 'EXISTING_PATIENT_LOOKUP',
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _otpDigits = '';
+        _maskedMobile = json['maskedMobile'] as String?;
+        _verificationId = json['verificationId'] as String?;
+        _otpAttemptsRemaining = json['attemptsAllowed'] as int?;
+        _view = ShellView.identityOtp;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final String? verificationId = _verificationId;
+    if (verificationId == null || _otpDigits.length < 4) return;
+    setState(() => _busy = true);
+
+    try {
+      await widget.api.post(
+        '/v1/identity/otp/verify',
+        <String, dynamic>{'verificationId': verificationId, 'code': _otpDigits},
+      );
+      if (!mounted) return;
+      setState(() => _busy = false);
+
+      // A new patient has no record to match against, so they go straight to giving
+      // their details. An existing patient is looked up and asked to confirm.
+      if (_journey == JourneyKind.newRegistration) {
+        setState(() => _view = ShellView.demographics);
+        return;
+      }
+      await _resolveIdentity(<String, dynamic>{
+        'method': 'MOBILE_OTP',
+        'verificationId': verificationId,
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _otpDigits = '';
+      });
+      if (error.isNetworkFailure) {
+        _handleApiFailure(error);
+        return;
+      }
+      // Wrong code, expired, or locked out: one neutral outcome, and the attempt counter
+      // comes from the server rather than being tracked here.
+      setState(() {
+        _lastCorrelationId = error.correlationId;
+        _view = ShellView.identityNotConfirmed;
+      });
+    }
+  }
+
+  Future<void> _resolveByUhid() async {
+    final String uhid = _uhidController.text.trim();
+    if (uhid.length < 3) return;
+    await _resolveIdentity(<String, dynamic>{'method': 'UHID', 'uhid': uhid});
+  }
+
+  /// Looks up the patient and asks them to confirm a masked summary.
+  ///
+  /// The system proposes and the person standing there decides. A UHID typed one digit
+  /// wrong would otherwise open a stranger's record without anyone noticing.
+  Future<void> _resolveIdentity(Map<String, dynamic> body) async {
+    final SessionManager? sessions = _sessions;
+    if (sessions == null) return;
+    setState(() => _busy = true);
+
+    try {
+      final Map<String, dynamic> json = await widget.api.post(
+        '/v1/identity/resolve?sessionId=${sessions.sessionId}',
+        body,
+      );
+      if (!mounted) return;
+
+      final Map<String, dynamic>? masked = json['masked'] as Map<String, dynamic>?;
+      if (masked == null) {
+        setState(() {
+          _busy = false;
+          _view = ShellView.identityNotConfirmed;
+        });
+        return;
+      }
+
+      setState(() {
+        _busy = false;
+        _verificationId = json['attemptId'] as String? ?? _verificationId;
+        _identityMaskedName = masked['maskedName'] as String?;
+        _maskedMobile = masked['maskedMobile'] as String? ?? _maskedMobile;
+        _identityMaskedUhid = masked['maskedUhid'] as String?;
+        _view = ShellView.identityConfirm;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (error.isNetworkFailure) {
+        _handleApiFailure(error);
+        return;
+      }
+      setState(() {
+        _lastCorrelationId = error.correlationId;
+        _view = ShellView.identityNotConfirmed;
+      });
+    }
+  }
+
+  Future<void> _confirmIdentity() async {
+    final SessionManager? sessions = _sessions;
+    final String? attemptId = _verificationId;
+    if (sessions == null || attemptId == null) return;
+    setState(() => _busy = true);
+
+    try {
+      await widget.api.post(
+        '/v1/identity/confirm?sessionId=${sessions.sessionId}',
+        <String, dynamic>{'attemptId': attemptId, 'confirmed': true},
+      );
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _goToDepartment();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _submitDemographics(Demographics details) async {
+    final SessionManager? sessions = _sessions;
+    final String? verificationId = _verificationId;
+    if (sessions == null || verificationId == null) return;
+    setState(() => _busy = true);
+
+    try {
+      await widget.api.post(
+        '/v1/identity/register?sessionId=${sessions.sessionId}',
+        <String, dynamic>{
+          'verificationId': verificationId,
+          'name': details.name,
+          'sex': details.sex.wire,
+          'ageYears': details.ageYears,
+          if (details.address != null) 'address': details.address,
+        },
+      );
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _goToDepartment();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  /// A single department needs no choosing. Most OPD kiosks stand outside one.
+  void _goToDepartment() {
+    final List<DepartmentOption> departments = _config?.departments ?? <DepartmentOption>[];
+    if (departments.length == 1) {
+      unawaited(_openVisit(departments.first));
+      return;
+    }
+    setState(() => _view = ShellView.department);
+  }
+
+  /// Opens the visit every clinical step downstream is keyed on.
+  Future<void> _openVisit(DepartmentOption department) async {
+    final SessionManager? sessions = _sessions;
+    if (sessions == null) return;
+    setState(() => _busy = true);
+
+    try {
+      final Map<String, dynamic> json = await widget.api.post(
+        '/v1/kiosk/sessions/${sessions.sessionId}/visit',
+        <String, dynamic>{'departmentCode': department.code},
+      );
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _department = department;
+        _preCheckinId = json['preCheckinId'] as String;
+      });
+      await _loadAyushSystems();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  /// Offers only systems with an approved module. A system with none is not shown at all.
+  Future<void> _loadAyushSystems() async {
+    try {
+      final Map<String, dynamic> json =
+          await widget.api.get('/v1/intakes/ayush-systems?language=$_languageTag');
+      final List<AyushSystem> systems = ((json['systems'] as List<dynamic>?) ?? <dynamic>[])
+          .map((dynamic e) => AyushSystem.fromWire(e as String))
+          .whereType<AyushSystem>()
+          .toList(growable: false);
+      if (!mounted) return;
+
+      // Nothing approved to choose between: the interview is the common clinical core,
+      // and putting up a selection screen with no options would be a dead end.
+      if (systems.isEmpty) {
+        setState(() => _ayushAvailable = systems);
+        await _loadNextQuestion();
+        return;
+      }
+      setState(() {
+        _ayushAvailable = systems;
+        _view = ShellView.ayush;
+      });
+    } on ApiException catch (error) {
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _loadNextQuestion() async {
+    final String? preCheckinId = _preCheckinId;
+    if (preCheckinId == null) return;
+    setState(() => _busy = true);
+
+    try {
+      final Map<String, dynamic> json =
+          await widget.api.get('/v1/intakes/$preCheckinId/next?language=$_languageTag');
+      if (!mounted) return;
+
+      final bool complete = json['complete'] as bool? ?? false;
+      if (complete) {
+        setState(() {
+          _busy = false;
+          _question = null;
+        });
+        await _startDocuments();
+        return;
+      }
+
+      setState(() {
+        _busy = false;
+        _question = Question.fromJson(json['question'] as Map<String, dynamic>);
+        _answeredCount = json['answeredCount'] as int? ?? _answeredCount;
+        _totalApplicable = json['totalApplicable'] as int? ?? _totalApplicable;
+        _selectedOptionIds.clear();
+        _textAnswer = null;
+        _scaleAnswer = null;
+        _view = ShellView.question;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _submitAnswer({List<String>? nonCommittal}) async {
+    final String? preCheckinId = _preCheckinId;
+    final Question? question = _question;
+    if (preCheckinId == null || question == null) return;
+    setState(() => _busy = true);
+
+    final List<String> optionIds = nonCommittal ?? _selectedOptionIds.toList(growable: false);
+
+    try {
+      await widget.api.post(
+        '/v1/intakes/$preCheckinId/answers?language=$_languageTag',
+        <String, dynamic>{
+          'questionId': question.id,
+          'selectedOptionIds': optionIds,
+          if (_textAnswer != null && _textAnswer!.trim().isNotEmpty)
+            'value': _textAnswer!.trim(),
+          if (_scaleAnswer != null) 'value': _scaleAnswer,
+          // A spoken answer and a tapped one are different evidence, and the doctor is
+          // told which this was. Voice intake is not wired up, so everything here is TOUCH.
+          'source': optionIds.isEmpty ? 'PATIENT_REPORTED' : 'PATIENT_SELECTED',
+          'modality': 'TOUCH',
+          'language': _languageTag,
+        },
+      );
+      if (!mounted) return;
+      if (_editingFromReview) {
+        setState(() => _editingFromReview = false);
+        await _loadReview();
+        return;
+      }
+      await _loadNextQuestion();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _startDocuments() async {
+    final bool available = await widget.documentCamera.isAvailable();
+    if (!mounted) return;
+    setState(() {
+      _documentCaptureAvailable = available;
+      _view = ShellView.addDocuments;
+    });
+  }
+
+  Future<void> _captureDocument(CaptureMethod method) async {
+    setState(() => _busy = true);
+    final CapturedDocument? captured = await widget.documentCamera.capture();
+    await widget.documentCamera.stop();
+    if (!mounted) return;
+
+    if (captured == null) {
+      setState(() => _busy = false);
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _pendingCapture = captured;
+      _qualityProblems = captured.qualityProblems;
+      // The quality screen is informational and skipped when nothing was detected. It
+      // never blocks: a poor scan the doctor can squint at beats no scan at all.
+      _view =
+          captured.qualityProblems.isEmpty ? ShellView.documentType : ShellView.imageQuality;
+    });
+  }
+
+  Future<void> _uploadDocument(DocumentKind kind) async {
+    final String? preCheckinId = _preCheckinId;
+    final CapturedDocument? captured = _pendingCapture;
+    if (preCheckinId == null || captured == null) return;
+    setState(() => _busy = true);
+
+    try {
+      await DocumentsApi(widget.api).upload(
+        preCheckinId: preCheckinId,
+        kind: kind,
+        contentType: captured.contentType,
+        bytes: captured.bytes,
+      );
+      if (!mounted) return;
+      setState(() {
+        // Dropped as soon as it is stored: the kiosk has no reason to keep a photograph
+        // of a prescription in memory once the server has it.
+        _pendingCapture = null;
+        _qualityProblems = const <String>[];
+      });
+      await _refreshDocuments();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _pendingCapture = null;
+      });
+      if (error.isNetworkFailure) {
+        _handleApiFailure(error);
+        return;
+      }
+      // A refused document is not a failed session. The patient carries on, and the
+      // reason stays on the server.
+      await _refreshDocuments();
+    }
+  }
+
+  Future<void> _refreshDocuments() async {
+    final String? preCheckinId = _preCheckinId;
+    if (preCheckinId == null) return;
+
+    try {
+      final List<AttachedDocument> documents =
+          await DocumentsApi(widget.api).list(preCheckinId);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _documents = documents;
+        _view = ShellView.addDocuments;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _loadReview() async {
+    final String? preCheckinId = _preCheckinId;
+    if (preCheckinId == null) return;
+    setState(() => _busy = true);
+
+    try {
+      final Map<String, dynamic> json =
+          await widget.api.get('/v1/precheckins/$preCheckinId/review?language=$_languageTag');
+      if (!mounted) return;
+
+      setState(() {
+        _busy = false;
+        _reviewItems = ((json['items'] as List<dynamic>?) ?? <dynamic>[])
+            .cast<Map<String, dynamic>>()
+            .map(
+              (Map<String, dynamic> row) => ReviewItem(
+                questionId: row['questionId'] as String,
+                prompt: row['prompt'] as String,
+                answered: row['answered'] as bool? ?? false,
+                display: row['display'] as String?,
+                provenance: row['provenance'] as String?,
+              ),
+            )
+            .toList(growable: false);
+        _reviewDocuments = ((json['documents'] as List<dynamic>?) ?? <dynamic>[])
+            .cast<Map<String, dynamic>>()
+            .map(
+              (Map<String, dynamic> row) => ReviewDocument(
+                label: row['label'] as String? ?? '',
+                awaitingReview: row['extractionState'] == 'AWAITING_CLINICIAN_REVIEW',
+              ),
+            )
+            .toList(growable: false);
+        _view = ShellView.review;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  /// Reopens one question from the review screen, then returns here.
+  Future<void> _editAnswer(String questionId) async {
+    final String? preCheckinId = _preCheckinId;
+    if (preCheckinId == null) return;
+    setState(() => _busy = true);
+
+    try {
+      final Map<String, dynamic> json = await widget.api
+          .get('/v1/intakes/$preCheckinId/question/$questionId?language=$_languageTag');
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _question = Question.fromJson(json['question'] as Map<String, dynamic>);
+        _selectedOptionIds.clear();
+        _textAnswer = null;
+        _scaleAnswer = null;
+        _editingFromReview = true;
+        _view = ShellView.question;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
+  Future<void> _submitIntake() async {
+    final String? preCheckinId = _preCheckinId;
+    if (preCheckinId == null) return;
+    setState(() => _busy = true);
+
+    try {
+      final Map<String, dynamic> json = await widget.api.post(
+        '/v1/precheckins/$preCheckinId/submit-intake',
+        <String, dynamic>{'reviewConfirmed': true, 'language': _languageTag},
+      );
+      if (!mounted) return;
+
+      final String? handle = json['tokenHandle'] as String?;
+      if (handle == null) {
+        // Submitted, but this visit has no kiosk-confirmed arrival to hang a token on.
+        // The information reached the doctor; the counter completes the check-in.
+        setState(() {
+          _busy = false;
+          _view = ShellView.tokenPending;
+        });
+        return;
+      }
+      setState(() => _tokenHandle = handle);
+      await _requestToken();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      _handleApiFailure(error);
+    }
+  }
+
   Future<void> _requestExit() async {
-    final bool confirmed = await showExitConfirmation(context, _strings);
+    final BuildContext? dialogContext = _navigatorKey.currentContext;
+    // No navigator yet means nothing is on screen to exit from.
+    if (dialogContext == null) return;
+    final bool confirmed = await showExitConfirmation(dialogContext, _strings);
     if (!confirmed) {
       _sessions?.recordActivity();
       return;
@@ -540,6 +1180,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
       settings: _a11y,
       child: MaterialApp(
         title: 'MediKiosk',
+        navigatorKey: _navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: MkTheme.build(highContrast: _a11y.highContrast, textScale: _a11y.textScale),
         home: _ActivityDetector(
@@ -566,9 +1207,8 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           strings: _strings,
           features: _config?.features ?? FeatureFlags.allDisabled,
           onCheckInWithMobileQr: () => unawaited(_startMobileQrCheckIn()),
-          // Phase 5's screens exist but are not yet wired into the shell journey.
-          onNewRegistration: null,
-          onExistingPatientCheckIn: null,
+          onNewRegistration: () => unawaited(_startJourney(JourneyKind.newRegistration)),
+          onExistingPatientCheckIn: () => unawaited(_startJourney(JourneyKind.existingPatient)),
           onSelectLanguage: () => unawaited(_startSessionAndSelectLanguage()),
           onToggleAudioGuidance: () => setState(
             () => _a11y = _a11y.copyWith(audioGuidance: !_a11y.audioGuidance),
@@ -650,7 +1290,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           maskedName: _arrivalMaskedName ?? '',
           maskedMobile: _arrivalMaskedMobile ?? '',
           hospitalName: _arrivalHospital ?? '',
-          departmentName: _arrivalDepartment ?? '',
+          departmentName: _departmentName,
           visitTypeLabel: _arrivalVisitType ?? '',
           onConfirm: () => setState(() {
             _declaringChanges = false;
@@ -682,15 +1322,217 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         return QrRejectedScreen(
           strings: _strings,
           correlationId: _lastCorrelationId,
-          onExit: () =>
-              unawaited(_endSession(SessionEndReason.exit, nextView: ShellView.home)),
+          onExit: () => unawaited(_endSession(SessionEndReason.exit, nextView: ShellView.home)),
+        );
+
+      case ShellView.identityMethod:
+        return _journey == JourneyKind.newRegistration
+            ? NewRegistrationMethodScreen(
+                strings: _strings,
+                abhaEnabled: _config?.features.abha ?? false,
+                onMobileOtp: () => setState(() {
+                  _mobileDigits = '';
+                  _view = ShellView.identityMobile;
+                }),
+                onExit: () => unawaited(_requestExit()),
+              )
+            : ExistingPatientMethodScreen(
+                strings: _strings,
+                // Appointment-QR check-in is the mobile-QR journey by another name, so it
+                // rejoins that path rather than duplicating it.
+                onScanAppointmentQr: () => unawaited(_startMobileQrCheckIn()),
+                onEnterUhid: () => setState(() {
+                  _uhidController.clear();
+                  _view = ShellView.identityUhid;
+                }),
+                onEnterMobile: () => setState(() {
+                  _mobileDigits = '';
+                  _view = ShellView.identityMobile;
+                }),
+                onExit: () => unawaited(_requestExit()),
+              );
+
+      case ShellView.identityMobile:
+        return MobileEntryScreen(
+          strings: _strings,
+          value: _mobileDigits,
+          busy: _busy,
+          onDigit: (String digit) => setState(() {
+            if (_mobileDigits.length < 10) _mobileDigits += digit;
+          }),
+          onBackspace: () => setState(() {
+            if (_mobileDigits.isNotEmpty) {
+              _mobileDigits = _mobileDigits.substring(0, _mobileDigits.length - 1);
+            }
+          }),
+          onClear: () => setState(() => _mobileDigits = ''),
+          onSubmit: () => unawaited(_sendOtp()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.identityOtp:
+        return OtpEntryScreen(
+          strings: _strings,
+          maskedMobile: _maskedMobile ?? '',
+          value: _otpDigits,
+          busy: _busy,
+          attemptsRemaining: _otpAttemptsRemaining,
+          onDigit: (String digit) => setState(() {
+            if (_otpDigits.length < 6) _otpDigits += digit;
+          }),
+          onBackspace: () => setState(() {
+            if (_otpDigits.isNotEmpty) {
+              _otpDigits = _otpDigits.substring(0, _otpDigits.length - 1);
+            }
+          }),
+          onClear: () => setState(() => _otpDigits = ''),
+          onSubmit: () => unawaited(_verifyOtp()),
+          onResend: () => unawaited(_sendOtp()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.identityUhid:
+        return UhidEntryScreen(
+          strings: _strings,
+          controller: _uhidController,
+          busy: _busy,
+          onSubmit: () => unawaited(_resolveByUhid()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.identityConfirm:
+        return IdentityConfirmationScreen(
+          strings: _strings,
+          maskedName: _identityMaskedName ?? '',
+          maskedMobile: _maskedMobile ?? '',
+          maskedUhid: _identityMaskedUhid,
+          busy: _busy,
+          onConfirm: () => unawaited(_confirmIdentity()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.identityNotConfirmed:
+        return IdentityNotConfirmedScreen(
+          strings: _strings,
+          correlationId: _lastCorrelationId,
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.demographics:
+        return DemographicsScreen(
+          strings: _strings,
+          maskedMobile: _maskedMobile ?? '',
+          busy: _busy,
+          onSubmit: (Demographics details) => unawaited(_submitDemographics(details)),
+          onBack: () => setState(() => _view = ShellView.identityMobile),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.department:
+        return DepartmentScreen(
+          strings: _strings,
+          departments: _config?.departments ?? const <DepartmentOption>[],
+          busy: _busy,
+          onSelect: (DepartmentOption department) => unawaited(_openVisit(department)),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.ayush:
+        return AyushSelectionScreen(
+          strings: _strings,
+          available: _ayushAvailable,
+          selected: _ayushSelected,
+          onSelect: (AyushSystem system) => setState(() => _ayushSelected = system),
+          // "I am not sure" is a real answer, not a skip. The doctor decides with them,
+          // and the interview continues on the common clinical core either way.
+          onNotSure: () => unawaited(_loadNextQuestion()),
+          onContinue: () => unawaited(_loadNextQuestion()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.question:
+        final Question? question = _question;
+        if (question == null) return StartupScreen(strings: _strings);
+        return QuestionScreen(
+          strings: _strings,
+          question: question,
+          selectedOptionIds: _selectedOptionIds,
+          answeredCount: _answeredCount,
+          totalApplicable: _totalApplicable,
+          busy: _busy,
+          textValue: _textAnswer,
+          scaleValue: _scaleAnswer,
+          onToggleOption: (String id) => setState(() {
+            if (question.isMultiSelect) {
+              _selectedOptionIds.contains(id)
+                  ? _selectedOptionIds.remove(id)
+                  : _selectedOptionIds.add(id);
+            } else {
+              _selectedOptionIds
+                ..clear()
+                ..add(id);
+            }
+          }),
+          onTextChanged: (String value) => setState(() => _textAnswer = value),
+          onScaleChanged: (int value) => setState(() => _scaleAnswer = value),
+          onNonCommittal: (NonCommittal answer) =>
+              unawaited(_submitAnswer(nonCommittal: <String>[answer.wire])),
+          onContinue: () => unawaited(_submitAnswer()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.addDocuments:
+        return AddDocumentsScreen(
+          strings: _strings,
+          attached: _documents,
+          cameraAvailable: _documentCaptureAvailable,
+          onCapture: (CaptureMethod method) => unawaited(_captureDocument(method)),
+          // Declaring "I have no documents" and continuing lead to the same next screen.
+          // They differ in what the patient is saying, not in where they end up.
+          onNoDocuments: () => unawaited(_loadReview()),
+          onContinue: () => unawaited(_loadReview()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.documentType:
+        return DocumentTypeScreen(
+          strings: _strings,
+          onSelect: (DocumentKind kind) => unawaited(_uploadDocument(kind)),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.imageQuality:
+        return ImageQualityScreen(
+          strings: _strings,
+          problems: _qualityProblems,
+          onUseAnyway: () => setState(() => _view = ShellView.documentType),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.ocrStatus:
+        return OcrStatusScreen(
+          strings: _strings,
+          attached: _documents,
+          onContinue: () => unawaited(_loadReview()),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.review:
+        return ReviewScreen(
+          strings: _strings,
+          items: _reviewItems,
+          documents: _reviewDocuments,
+          submitting: _busy,
+          onEdit: (String questionId) => unawaited(_editAnswer(questionId)),
+          onSubmit: () => unawaited(_submitIntake()),
+          onExit: () => unawaited(_requestExit()),
         );
 
       case ShellView.token:
         return TokenScreen(
           strings: _strings,
           token: _token ?? '',
-          departmentName: _arrivalDepartment ?? '',
+          departmentName: _departmentName,
           room: _tokenRoom,
           queueStatus: _tokenQueueStatus,
           printerAvailable: _printerAvailable,

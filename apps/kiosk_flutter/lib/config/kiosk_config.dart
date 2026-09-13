@@ -83,6 +83,27 @@ class SessionTiming {
 
 /// Configuration the kiosk boots against, from `GET /v1/kiosk/config`.
 @immutable
+/// A department this kiosk can open a visit against.
+@immutable
+class DepartmentOption {
+  const DepartmentOption({required this.code, required this.name, this.ayushSystem});
+
+  // The server calls this `departmentId`, and the value is the department's CODE rather
+  // than its uuid — internal identifiers are not published to a device in a public
+  // corridor. Named `code` here because that is what it is.
+  factory DepartmentOption.fromJson(Map<String, dynamic> json) => DepartmentOption(
+        code: json['departmentId'] as String,
+        name: json['name'] as String,
+        ayushSystem: json['ayushSystem'] as String?,
+      );
+
+  final String code;
+  final String name;
+
+  /// Null for a department that is not an AYUSH system, e.g. general OPD.
+  final String? ayushSystem;
+}
+
 class KioskConfig {
   const KioskConfig({
     required this.hospitalId,
@@ -90,6 +111,7 @@ class KioskConfig {
     required this.branchId,
     required this.kioskId,
     required this.languages,
+    required this.departments,
     required this.features,
     required this.session,
     required this.consentNoticeVersion,
@@ -103,6 +125,9 @@ class KioskConfig {
         languages: (json['languages'] as List<dynamic>)
             .map((dynamic e) => LanguageOption.fromJson(e as Map<String, dynamic>))
             .toList(growable: false),
+        departments: ((json['departments'] as List<dynamic>?) ?? <dynamic>[])
+            .map((dynamic e) => DepartmentOption.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
         features: FeatureFlags.fromJson(json['features'] as Map<String, dynamic>),
         session: SessionTiming.fromJson(json['session'] as Map<String, dynamic>),
         consentNoticeVersion:
@@ -114,6 +139,11 @@ class KioskConfig {
   final String branchId;
   final String kioskId;
   final List<LanguageOption> languages;
+
+  /// Only the departments this hospital has enabled. A kiosk cannot open a visit against
+  /// anything else, and the server checks that again.
+  final List<DepartmentOption> departments;
+
   final FeatureFlags features;
   final SessionTiming session;
   final String consentNoticeVersion;

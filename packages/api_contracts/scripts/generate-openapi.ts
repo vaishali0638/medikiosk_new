@@ -432,6 +432,26 @@ const endpoints: readonly EndpointSpec[] = [
     phase: '10',
   },
   {
+    method: 'post',
+    path: '/kiosk/sessions/{id}/visit',
+    summary:
+      'Open the visit for a walk-in patient whose identity is confirmed. Idempotent per ' +
+      'session; the patient is taken from the session, never from the request body.',
+    tag: 'kiosk',
+    status: 'implemented',
+    phase: '11',
+  },
+  {
+    method: 'get',
+    path: '/intakes/{preCheckinId}/question/{questionId}',
+    summary:
+      'One question, for reopening a single answer from the review screen. Served only ' +
+      'if the branching still makes it applicable.',
+    tag: 'intake',
+    status: 'implemented',
+    phase: '11',
+  },
+  {
     method: 'get',
     path: '/precheckins/{preCheckinId}/review',
     summary:

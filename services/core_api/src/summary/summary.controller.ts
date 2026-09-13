@@ -10,6 +10,8 @@ import { DomainError } from '../common/domain-error';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { ConsentService } from '../consent/consent.service';
 import { PreCheckinService } from '../precheckin/precheckin.service';
+import { KioskVisitService } from '../kiosk/kiosk-visit.service';
+import { ARRIVAL_HANDLE_TTL_SECONDS } from '../arrival/arrival.service';
 import { ReviewService } from './review.service';
 import { SummaryService } from './summary.service';
 import { SubmissionService } from './submission.service';
@@ -44,6 +46,7 @@ export class SummaryController {
     private readonly submissions: SubmissionService,
     private readonly consents: ConsentService,
     private readonly preCheckins: PreCheckinService,
+    private readonly visits: KioskVisitService,
   ) {}
 
   @Get('precheckins/:preCheckinId/review')
@@ -144,10 +147,27 @@ export class SummaryController {
       `kiosk:${req.kiosk.deviceCode}`,
     );
 
+    // A walk-in has no QR and so no arrival scan. Their presence is established by the
+    // fact that this entire intake just happened on this device, so the arrival is
+    // confirmed here and the token step is addressed through the same rotated handle the
+    // mobile path uses. A mobile pre-check-in reaching this endpoint gets no handle: it
+    // must still be scanned, and `confirmWalkInArrival` refuses it.
+    let tokenHandle: string | null = null;
+    if (preCheckin.kiosk_session_id !== null) {
+      tokenHandle = await this.visits.confirmWalkInArrival({
+        preCheckinId,
+        kioskDeviceId: req.kiosk.deviceId,
+        correlationId: req.correlationId,
+        actorId: `kiosk:${req.kiosk.deviceCode}`,
+        handleTtlSeconds: ARRIVAL_HANDLE_TTL_SECONDS,
+      });
+    }
+
     return {
       submissionId: submission.submissionId,
       submittedAt: submission.submittedAt,
       alreadySubmitted: submission.alreadySubmitted,
+      tokenHandle,
       summaryId: draft.summaryId,
       // Returned so a client cannot render the draft without also having the label in
       // hand. A client that wants to show the text has been given the banner with it.
@@ -190,7 +210,7 @@ export class SummaryController {
   private async requireVisit(
     req: KioskRequest,
     preCheckinId: string,
-  ): Promise<{ patient_id: string }> {
+  ): Promise<{ patient_id: string; kiosk_session_id: string | null }> {
     const preCheckin = await this.preCheckins.findById(preCheckinId);
     if (!preCheckin || preCheckin.hospital_id !== req.kiosk.hospitalId) {
       throw new DomainError('VALIDATION_FAILED', req.correlationId, 'unknown pre-check-in');

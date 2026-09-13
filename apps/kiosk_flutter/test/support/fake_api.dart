@@ -29,6 +29,23 @@ class FakeApi {
     _routes[pathSuffix] = handler;
   }
 
+  /// Responds with a body computed per call, for an endpoint whose answer changes —
+  /// `next question`, for instance, which must eventually say the interview is complete.
+  void onRequest(
+    String pathSuffix,
+    Map<String, dynamic> Function(RecordedRequest) build, {
+    int status = 200,
+  }) {
+    on(
+      pathSuffix,
+      (RecordedRequest request) => http.Response(
+        jsonEncode(build(request)),
+        status,
+        headers: <String, String>{'content-type': 'application/json; charset=utf-8'},
+      ),
+    );
+  }
+
   void onJson(String pathSuffix, Map<String, dynamic> body, {int status = 200}) {
     // The charset matters: http.Response defaults to latin1 without it, which cannot
     // encode the Devanagari and Tamil this API actually returns. A real Nest server sends
