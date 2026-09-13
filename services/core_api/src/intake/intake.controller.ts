@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { NON_COMMITTAL_ANSWERS } from '@medikiosk/questionnaire-schema';
 import { DomainError } from '../common/domain-error';
+import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { ConsentService } from '../consent/consent.service';
 import { AnswerRepository } from './answer.repository';
@@ -64,7 +65,7 @@ export class IntakeController {
   })
   async next(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
     const { questionnaire, lookup, moduleUsed } = await this.load(req, preCheckinId, language);
@@ -94,7 +95,7 @@ export class IntakeController {
   @ApiOperation({ summary: 'Record an answer as a new revision. Answers never overwrite.' })
   async answer(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Body() body: unknown,
     @Query('language') language?: string,
   ): Promise<unknown> {
@@ -175,7 +176,7 @@ export class IntakeController {
   })
   async question(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Param('questionId') questionId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
@@ -201,7 +202,7 @@ export class IntakeController {
   })
   async review(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
     const { questionnaire, lookup, moduleUsed } = await this.load(req, preCheckinId, language);

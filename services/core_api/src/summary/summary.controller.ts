@@ -7,6 +7,7 @@ import {
   PROVENANCE_LABELS,
 } from '@medikiosk/terminology';
 import { DomainError } from '../common/domain-error';
+import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { ConsentService } from '../consent/consent.service';
 import { PreCheckinService } from '../precheckin/precheckin.service';
@@ -57,7 +58,7 @@ export class SummaryController {
   })
   async patientReview(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
     const preCheckin = await this.requireVisit(req, preCheckinId);
@@ -96,7 +97,7 @@ export class SummaryController {
   })
   async submit(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Body() body: unknown,
   ): Promise<unknown> {
     const parsed = submitSchema.safeParse(body);
@@ -185,7 +186,7 @@ export class SummaryController {
   })
   async draft(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
   ): Promise<unknown> {
     await this.requireVisit(req, preCheckinId);
 

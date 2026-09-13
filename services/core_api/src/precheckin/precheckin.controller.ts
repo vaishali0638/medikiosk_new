@@ -6,6 +6,7 @@ import {
   type PreCheckin,
 } from '@medikiosk/api-contracts';
 import { DomainError } from '../common/domain-error';
+import { UuidParamPipe } from '../common/uuid-param.pipe';
 import type { CorrelatedRequest } from '../common/correlation-id.middleware';
 import type { PreCheckinRow } from '../db/database.types';
 import { PreCheckinService } from './precheckin.service';
@@ -39,7 +40,10 @@ export class PreCheckinController {
 
   @Post(':id/submit')
   @ApiOperation({ summary: 'Submit a reviewed intake. Only a submitted intake gets a QR.' })
-  async submit(@Req() req: CorrelatedRequest, @Param('id') id: string): Promise<{ state: string }> {
+  async submit(
+    @Req() req: CorrelatedRequest,
+    @Param('id', UuidParamPipe) id: string,
+  ): Promise<{ state: string }> {
     const row = await this.preCheckins.submit(id, {
       correlationId: req.correlationId,
       actorId: 'patient:pwa',
@@ -51,7 +55,10 @@ export class PreCheckinController {
   @ApiOperation({
     summary: 'Issue a signed, short-lived, single-use QR. Carries no medical data.',
   })
-  async issueQr(@Req() req: CorrelatedRequest, @Param('id') id: string): Promise<IssueQrResponse> {
+  async issueQr(
+    @Req() req: CorrelatedRequest,
+    @Param('id', UuidParamPipe) id: string,
+  ): Promise<IssueQrResponse> {
     const signed = await this.preCheckins.issueQr(id, {
       correlationId: req.correlationId,
       actorId: 'patient:pwa',

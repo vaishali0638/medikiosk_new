@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PROVENANCE_LABELS } from '@medikiosk/terminology';
+import { NON_COMMITTAL_LABELS, type NonCommittalAnswer } from '@medikiosk/questionnaire-schema';
 import { DomainError } from '../common/domain-error';
 import { AnswerRepository } from '../intake/answer.repository';
 import { QuestionnaireService } from '../intake/questionnaire.service';
@@ -95,8 +96,14 @@ export class ReviewService {
 
     for (const question of questions) {
       const answer = byId.get(question.id);
+      // Non-committal answers are not in `question.options` — they are a separate,
+      // always-available set — so looking them up there falls through to the raw id and
+      // puts `NOT_SURE` in front of a clinician. They are resolved first.
       const optionLabels = (answer?.selectedOptionIds ?? []).map(
-        (id) => question.options?.find((o) => o.id === id)?.label ?? id,
+        (id) =>
+          NON_COMMITTAL_LABELS[id as NonCommittalAnswer] ??
+          question.options?.find((o) => o.id === id)?.label ??
+          id,
       );
       const value = displayValue(answer?.value);
       const display = value ?? (optionLabels.length > 0 ? optionLabels.join(', ') : null);

@@ -123,8 +123,13 @@ export class IdentityService {
     }
 
     if (!MINIMUM_RELEASE_STRENGTH.includes(strength)) {
-      // MODERATE reached here means a mobile OTP that could not be narrowed by a date of
-      // birth. Possession of the handset is not enough to hand over a record.
+      // MODERATE means a mobile OTP. It proves possession of a handset and nothing more,
+      // and a date of birth does not raise it: a birth date appears on every form the
+      // patient has ever filled in and is known to their whole family, so it disambiguates
+      // a shared phone without being evidence of identity. An existing patient who can
+      // only offer a phone number is sent to the counter, which is a working route to care
+      // rather than a dead end — the alternative is handing a medical record to whoever is
+      // holding the handset.
       await this.record(context, method, strength, 1, null, 'INSUFFICIENT_STRENGTH');
       throw new DomainError(
         'IDENTITY_NOT_CONFIRMED',

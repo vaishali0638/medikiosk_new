@@ -8,6 +8,7 @@ import {
   type TokenResponse,
 } from '@medikiosk/api-contracts';
 import { DomainError } from '../common/domain-error';
+import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { KioskSessionRepository } from '../kiosk/kiosk-session.repository';
 import { ArrivalService } from './arrival.service';
@@ -56,7 +57,7 @@ export class ArrivalController {
   @ApiOperation({ summary: 'Confirm the masked visit and declare what has changed.' })
   async confirm(
     @Req() req: KioskRequest,
-    @Param('id') arrivalHandle: string,
+    @Param('id', UuidParamPipe) arrivalHandle: string,
     @Body() body: unknown,
   ): Promise<{ tokenHandle: string; changedSections: readonly string[] }> {
     const parsed = arrivalConfirmRequestSchema.safeParse(body);
@@ -96,7 +97,7 @@ export class ArrivalController {
   })
   async requestToken(
     @Req() req: KioskRequest,
-    @Param('handle') handle: string,
+    @Param('handle', UuidParamPipe) handle: string,
   ): Promise<TokenResponse> {
     const preCheckinId = await this.arrivals.resolveTokenHandle(handle, req.correlationId);
     // Same reasoning as confirm: the token belongs to the visit, not to the kiosk
@@ -109,7 +110,7 @@ export class ArrivalController {
   @ApiOperation({ summary: 'Poll the recorded outcome. Never contacts the HIS.' })
   async status(
     @Req() req: KioskRequest,
-    @Param('handle') handle: string,
+    @Param('handle', UuidParamPipe) handle: string,
   ): Promise<ArrivalStatusResponse> {
     const preCheckinId = await this.arrivals.resolveTokenHandle(handle, req.correlationId);
     const status = await this.tokens.getStatus(preCheckinId, req.kiosk);

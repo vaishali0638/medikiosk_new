@@ -38,7 +38,13 @@ export class DomainExceptionFilter implements ExceptionFilter {
       this.logger.warn(
         `${exception.code} correlationId=${correlationId} ${exception.internalDetail ?? ''}`,
       );
-      response.status(exception.getStatus()).json(exception.getResponse());
+      // A DomainError raised from a pipe has no correlation id: pipes run before any
+      // handler and cannot see the request. The body is rebuilt with the request's own id
+      // so every response the client gets is traceable, wherever it was raised.
+      const body = exception.correlationId
+        ? exception.getResponse()
+        : apiError(exception.code, correlationId);
+      response.status(exception.getStatus()).json(body);
       return;
     }
 

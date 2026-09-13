@@ -156,11 +156,19 @@ export interface EncounterTable {
   id: Generated<string>;
   patient_id: string;
   department_id: string;
+  /** The visit that produced this encounter. One encounter per pre-check-in. */
+  pre_checkin_id: string | null;
   visit_type: VisitType;
   ayush_system: AyushSystem | null;
   his_encounter_ref: string | null;
   his_token: string | null;
   token_issued_at: Date | null;
+  /** Set together or not at all — see `encounter_verification_is_complete`. */
+  verified_at: Date | null;
+  verified_by_user_id: string | null;
+  /** The clinical_summary the clinician confirmed. Never an unverified draft: the
+   *  summary's own constraint refuses the CLINICIAN-VERIFIED label without a clinician. */
+  verified_summary_id: string | null;
   created_at: Generated<Date>;
   updated_at: ManagedTimestamp;
   version: RowVersion;
@@ -267,6 +275,9 @@ export interface FollowUpDeltaTable {
   previous_verified_at: Timestamp;
   item_kind: string;
   item_label: string;
+  /** The question, document or section this item came from. Its identity — the rendered
+   *  label is not unique, because two questions can produce the same sentence. */
+  item_ref: string | null;
   change_kind: FollowUpChangeKind;
   detail: Generated<unknown>;
   source: ProvenanceSource;

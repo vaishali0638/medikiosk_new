@@ -459,6 +459,33 @@ describe('patient review and safe draft (integration)', () => {
     });
   });
 
+  describe('a non-committal answer', () => {
+    it('reaches the clinician as words, not as an internal identifier', async () => {
+      await answer({ questionId: 'chiefComplaint', selectedOptionIds: ['NOT_SURE'] }).expect(201);
+      await submit().expect(201);
+
+      const review = await http()
+        .get(`/v1/precheckins/${preCheckinId}/review?language=en`)
+        .set(headers())
+        .expect(200);
+      const item = review.body.items.find(
+        (i: { questionId: string }) => i.questionId === 'chiefComplaint',
+      );
+      expect(item.display).toBe('I am not sure');
+
+      const draft = await http()
+        .get(`/v1/precheckins/${preCheckinId}/draft`)
+        .set(headers())
+        .expect(200);
+
+      // `NOT_SURE` is an option id the patient never saw. Non-committal answers are not
+      // in `question.options`, so a naive lookup falls through to the raw id and puts an
+      // internal identifier in a clinical record.
+      expect(JSON.stringify(draft.body)).not.toContain('NOT_SURE');
+      expect(JSON.stringify(draft.body)).toContain('I am not sure');
+    });
+  });
+
   describe('a numeric answer', () => {
     it('reaches the draft rather than vanishing between the sections', async () => {
       await answerSome();

@@ -9,6 +9,7 @@ import {
 } from '@medikiosk/api-contracts';
 import { z } from 'zod';
 import { DomainError } from '../common/domain-error';
+import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskConfigService } from './kiosk-config.service';
 import { KioskVisitService } from './kiosk-visit.service';
 import { KioskDeviceGuard, type KioskRequest } from './kiosk-device.guard';
@@ -57,7 +58,7 @@ export class KioskController {
   })
   async openVisit(
     @Req() req: KioskRequest,
-    @Param('id') id: string,
+    @Param('id', UuidParamPipe) id: string,
     @Body() body: unknown,
   ): Promise<{ preCheckinId: string; departmentId: string }> {
     const parsed = openVisitSchema.safeParse(body);
@@ -80,7 +81,10 @@ export class KioskController {
 
   @Post('sessions/:id/activity')
   @ApiOperation({ summary: 'Record patient activity and reset the inactivity window.' })
-  async recordActivity(@Req() req: KioskRequest, @Param('id') id: string): Promise<KioskSession> {
+  async recordActivity(
+    @Req() req: KioskRequest,
+    @Param('id', UuidParamPipe) id: string,
+  ): Promise<KioskSession> {
     const row = await this.sessions.touch(id);
     // A session that has already ended must not be revivable: the wipe already ran, and
     // resuming would put the previous patient's flow back in front of the next one.
@@ -92,7 +96,7 @@ export class KioskController {
   @ApiOperation({ summary: 'Record the selected language for this session.' })
   async selectLanguage(
     @Req() req: KioskRequest,
-    @Param('id') id: string,
+    @Param('id', UuidParamPipe) id: string,
     @Body() body: unknown,
   ): Promise<KioskSession> {
     const parsed = selectLanguageRequestSchema.safeParse(body);
@@ -122,7 +126,7 @@ export class KioskController {
   @ApiOperation({ summary: 'End a session. Requires the client to attest that it wiped.' })
   async endSession(
     @Req() req: KioskRequest,
-    @Param('id') id: string,
+    @Param('id', UuidParamPipe) id: string,
     @Body() body: unknown,
   ): Promise<{ sessionId: string; state: string; endedAt: string }> {
     const parsed = endKioskSessionRequestSchema.safeParse(body);

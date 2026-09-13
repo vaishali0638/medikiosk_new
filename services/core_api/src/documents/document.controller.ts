@@ -4,6 +4,7 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import { DOCUMENT_TYPES } from '@medikiosk/api-contracts';
 import { DomainError } from '../common/domain-error';
+import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { PreCheckinService } from '../precheckin/precheckin.service';
 import { DocumentService } from './document.service';
@@ -51,7 +52,7 @@ export class DocumentController {
   })
   async upload(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Body() body: unknown,
   ): Promise<unknown> {
     const parsed = uploadSchema.safeParse(body);
@@ -97,7 +98,7 @@ export class DocumentController {
   @ApiOperation({ summary: 'Documents attached to a visit, with their extraction state.' })
   async list(
     @Req() req: KioskRequest,
-    @Param('preCheckinId') preCheckinId: string,
+    @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
   ): Promise<{ documents: unknown[] }> {
     const preCheckin = await this.preCheckins.findById(preCheckinId);
     if (!preCheckin || preCheckin.hospital_id !== req.kiosk.hospitalId) {
@@ -115,7 +116,7 @@ export class DocumentController {
   @ApiOperation({ summary: 'The original bytes, integrity-checked on the way out.' })
   async original(
     @Req() req: KioskRequest,
-    @Param('documentId') documentId: string,
+    @Param('documentId', UuidParamPipe) documentId: string,
     @Res() res: Response,
   ): Promise<void> {
     const { bytes, document } = await this.documents.readOriginal(documentId, req.correlationId);
@@ -133,7 +134,7 @@ export class DocumentController {
   })
   async extraction(
     @Req() req: KioskRequest,
-    @Param('documentId') documentId: string,
+    @Param('documentId', UuidParamPipe) documentId: string,
   ): Promise<unknown> {
     const extraction = await this.extractions.findForDocument(documentId);
     if (!extraction) {

@@ -20,7 +20,13 @@ const transitions: TransitionTable<KioskSessionState> = {
   // A declined consent does not get its own state here: it ends the session outright,
   // recorded on the consent artefact rather than left as a resumable kiosk state.
   CONSENT_GRANTED: ['IDENTITY_PENDING', 'EXITED', 'EXPIRED', 'ERROR'],
-  IDENTITY_PENDING: ['IDENTITY_CONFIRMED', 'EXITED', 'EXPIRED', 'ERROR'],
+  // Self-loop, for the same reason QR_ISSUED has one: a patient may make more than one
+  // identity attempt. The existing-patient screen offers three methods precisely so they
+  // can try another, and someone who tries their mobile number, is refused, and then
+  // reaches for their hospital card must not find the session wedged. Attempts are
+  // individually recorded and rate-limited in `identity_attempt`; the self-loop weakens
+  // nothing, it just stops a normal sequence looking like an illegal one.
+  IDENTITY_PENDING: ['IDENTITY_PENDING', 'IDENTITY_CONFIRMED', 'EXITED', 'EXPIRED', 'ERROR'],
   IDENTITY_CONFIRMED: ['INTAKE_IN_PROGRESS', 'EXITED', 'EXPIRED', 'ERROR'],
   INTAKE_IN_PROGRESS: ['REVIEW_PENDING', 'EXITED', 'EXPIRED', 'ERROR'],
   // Editing sends the patient back into intake; submitting is only possible from review.

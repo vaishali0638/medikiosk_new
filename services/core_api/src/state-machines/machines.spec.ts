@@ -123,6 +123,21 @@ describe('KioskSession safety properties', () => {
 
   it('lets the patient go back and edit from the review screen', () => {
     expect(kioskSessionMachine.canTransition('REVIEW_PENDING', 'INTAKE_IN_PROGRESS')).toBe(true);
+
+    // A patient may try their mobile number, be refused, and then reach for their
+    // hospital card. That is a normal sequence, not an illegal transition, and a session
+    // that wedged on the second attempt would end a working check-in.
+    expect(kioskSessionMachine.canTransition('IDENTITY_PENDING', 'IDENTITY_PENDING')).toBe(true);
+
+    // The self-loop must not become a way around confirmation.
+    expect(
+      everyPathPassesThrough(
+        kioskSessionMachine,
+        'CREATED',
+        'IDENTITY_CONFIRMED',
+        'CONSENT_GRANTED',
+      ),
+    ).toBe(true);
   });
 
   it('allows Exit and timeout from every non-terminal state', () => {

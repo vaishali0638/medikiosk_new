@@ -7,6 +7,7 @@ import {
   type ConsentResponse,
 } from '@medikiosk/api-contracts';
 import { DomainError } from '../common/domain-error';
+import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { KioskSessionRepository } from '../kiosk/kiosk-session.repository';
 import { ConsentNoticeService } from './consent-notice.service';
@@ -95,7 +96,10 @@ export class ConsentController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Read a consent artefact back.' })
-  async getById(@Req() req: KioskRequest, @Param('id') id: string): Promise<ConsentResponse> {
+  async getById(
+    @Req() req: KioskRequest,
+    @Param('id', UuidParamPipe) id: string,
+  ): Promise<ConsentResponse> {
     const row = await this.repository.findById(id);
     // Scoped to the calling kiosk's hospital: a device must not be able to read consent
     // artefacts belonging to another facility.
@@ -109,7 +113,7 @@ export class ConsentController {
   @ApiOperation({ summary: 'Withdraw a granted consent. Recorded, never deleted.' })
   async revoke(
     @Req() req: KioskRequest,
-    @Param('id') id: string,
+    @Param('id', UuidParamPipe) id: string,
     @Body() body: unknown,
   ): Promise<ConsentResponse> {
     const parsed = revokeConsentRequestSchema.safeParse(body ?? {});

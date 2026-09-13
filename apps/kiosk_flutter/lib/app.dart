@@ -56,6 +56,7 @@ enum ShellView {
   identityUhid,
   identityConfirm,
   identityNotConfirmed,
+  identityCounterOnly,
   demographics,
   department,
   ayush,
@@ -148,6 +149,9 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   String _otpDigits = '';
   String? _maskedMobile;
   String? _verificationId;
+  /// The resolved-but-unconfirmed candidate. Distinct from the OTP verification: one is
+  /// "this phone answered", the other is "this is who the record says you are".
+  String? _candidateId;
   String? _identityMaskedName;
   String? _identityMaskedUhid;
   int? _otpAttemptsRemaining;
@@ -280,6 +284,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _otpDigits = '';
     _maskedMobile = null;
     _verificationId = null;
+    _candidateId = null;
     _identityMaskedName = null;
     _identityMaskedUhid = null;
     _otpAttemptsRemaining = null;
@@ -741,7 +746,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
 
       setState(() {
         _busy = false;
-        _verificationId = json['attemptId'] as String? ?? _verificationId;
+        _candidateId = json['candidateId'] as String?;
         _identityMaskedName = masked['maskedName'] as String?;
         _maskedMobile = masked['maskedMobile'] as String? ?? _maskedMobile;
         _identityMaskedUhid = masked['maskedUhid'] as String?;
@@ -763,14 +768,14 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
 
   Future<void> _confirmIdentity() async {
     final SessionManager? sessions = _sessions;
-    final String? attemptId = _verificationId;
-    if (sessions == null || attemptId == null) return;
+    final String? candidateId = _candidateId;
+    if (sessions == null || candidateId == null) return;
     setState(() => _busy = true);
 
     try {
       await widget.api.post(
         '/v1/identity/confirm?sessionId=${sessions.sessionId}',
-        <String, dynamic>{'attemptId': attemptId, 'confirmed': true},
+        <String, dynamic>{'candidateId': candidateId, 'isMe': true},
       );
       if (!mounted) return;
       setState(() => _busy = false);
@@ -1345,10 +1350,14 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
                   _uhidController.clear();
                   _view = ShellView.identityUhid;
                 }),
-                onEnterMobile: () => setState(() {
-                  _mobileDigits = '';
-                  _view = ShellView.identityMobile;
-                }),
+                // A mobile number is offered because the specification lists it, but a
+                // one-time code proves possession of a handset and not identity, so it
+                // cannot release an existing record — see MINIMUM_RELEASE_STRENGTH. The
+                // patient is told that here rather than after entering ten digits and a
+                // code, which is the same refusal delivered two screens later.
+                onEnterMobile: () => setState(
+                  () => _view = ShellView.identityCounterOnly,
+                ),
                 onExit: () => unawaited(_requestExit()),
               );
 
@@ -1415,6 +1424,15 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         return IdentityNotConfirmedScreen(
           strings: _strings,
           correlationId: _lastCorrelationId,
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.identityCounterOnly:
+        // Deliberately the same wording as a failed match. A patient learns nothing about
+        // whether the hospital holds a record for that number, and neither does anyone
+        // else standing at the kiosk trying numbers.
+        return IdentityNotConfirmedScreen(
+          strings: _strings,
           onExit: () => unawaited(_requestExit()),
         );
 

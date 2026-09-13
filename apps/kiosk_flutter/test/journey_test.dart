@@ -233,6 +233,24 @@ void main() {
     expect(find.textContaining('Ayurveda OPD'), findsWidgets);
   });
 
+  testWidgets('a mobile number alone sends an existing patient to the counter', (
+    WidgetTester tester,
+  ) async {
+    wireJourney();
+    final KioskAppState shell = await pumpApp(tester);
+
+    await tapText(tester, 'Existing Patient Check-in');
+    await tapText(tester, 'English');
+    await tapText(tester, 'Continue');
+    await tapText(tester, 'Agree and Continue');
+    await tapText(tester, 'Enter mobile number');
+
+    // Said before ten digits and a code, not after: the refusal is the same either way,
+    // and the server would never release a record on possession of a handset.
+    expect(shell.view, ShellView.identityCounterOnly);
+    expect(find.textContaining('speak to the counter'), findsOneWidget);
+  });
+
   testWidgets('Existing Patient Check-in confirms a masked record first', (
     WidgetTester tester,
   ) async {
@@ -240,8 +258,13 @@ void main() {
     api.onJson(
       '/v1/identity/resolve',
       <String, dynamic>{
-        'attemptId': 'a1',
-        'strength': 'STRONG',
+        // The real contract's field names. An earlier version of this fake invented
+        // `attemptId`, so the test passed against the shell's own assumption while the
+        // server was answering something else entirely.
+        'candidateId': 'a1',
+        'method': 'UHID_AND_ENCOUNTER',
+        'strength': 'STRONGEST',
+        'expiresAt': '2026-09-13T10:05:00.000Z',
         'masked': <String, dynamic>{
           'maskedName': 'R**** K****',
           'maskedMobile': '******3210',
@@ -250,7 +273,11 @@ void main() {
       },
       status: 201,
     );
-    api.onJson('/v1/identity/confirm', <String, dynamic>{'patientId': 'p1'}, status: 201);
+    api.onJson(
+      '/v1/identity/confirm',
+      <String, dynamic>{'patientId': 'p1', 'strength': 'STRONGEST'},
+      status: 201,
+    );
 
     final KioskAppState shell = await pumpApp(tester);
     await tapText(tester, 'Existing Patient Check-in');
@@ -259,15 +286,12 @@ void main() {
     await tapText(tester, 'Agree and Continue');
     expect(shell.view, ShellView.identityMethod);
 
-    await tapText(tester, 'Enter mobile number');
-    for (final String digit in '9876543210'.split('')) {
-      await tapText(tester, digit);
-    }
-    await tapText(tester, 'Send code');
-    for (final String digit in '123456'.split('')) {
-      await tapText(tester, digit);
-    }
-    await tapText(tester, 'Verify');
+    // UHID, not the mobile number: a one-time code proves possession of a handset, and
+    // the server will not release a record on that alone.
+    await tapText(tester, 'Enter UHID');
+    await tester.enterText(find.byType(TextField).first, 'UH00012345');
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Continue');
 
     // The system proposes; the person standing there decides.
     expect(shell.view, ShellView.identityConfirm);

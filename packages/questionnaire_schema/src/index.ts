@@ -1,6 +1,7 @@
 export {
   QUESTION_TYPES,
   NON_COMMITTAL_ANSWERS,
+  NON_COMMITTAL_LABELS,
   optionSchema,
   durationBandSchema,
   questionSchema,

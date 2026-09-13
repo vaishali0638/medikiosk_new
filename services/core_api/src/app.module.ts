@@ -10,6 +10,7 @@ import { ArrivalModule } from './arrival/arrival.module';
 import { IdentityModule } from './identity/identity.module';
 import { DocumentsModule } from './documents/documents.module';
 import { SummaryModule } from './summary/summary.module';
+import { FollowUpModule } from './followup/followup.module';
 import { IntakeModule } from './intake/intake.module';
 import { OpsModule } from './ops/ops.module';
 import { PatientChannelModule } from './patient-channel/patient-channel.module';
@@ -38,6 +39,7 @@ import { HealthModule } from './health/health.module';
     IntakeModule,
     DocumentsModule,
     SummaryModule,
+    FollowUpModule,
   ],
   // Arrival repositories still live here; their controllers arrive in Phases 6 and 7.
   providers: [AuditRepository, QrNonceRepository, TokenRequestRepository],

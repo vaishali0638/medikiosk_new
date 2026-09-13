@@ -33,6 +33,23 @@ export const NON_COMMITTAL_ANSWERS = [
 ] as const;
 export type NonCommittalAnswer = (typeof NON_COMMITTAL_ANSWERS)[number];
 
+/**
+ * How a non-committal answer reads in English.
+ *
+ * These are not option ids the patient ever saw: the kiosk renders them from its own
+ * translated strings. But they are stored as ids, and anything server-side that renders an
+ * answer — the review payload, the clinician's draft — has to turn them back into words.
+ * Without this a doctor reads `Patient reported: "NOT_SURE"`, which is an internal
+ * identifier in a clinical record.
+ *
+ * The wording is the specification's own (master prompt §15), not new clinical text.
+ */
+export const NON_COMMITTAL_LABELS: Readonly<Record<NonCommittalAnswer, string>> = {
+  NOT_SURE: 'I am not sure',
+  PREFER_TO_DISCUSS_WITH_DOCTOR: 'I prefer to tell the doctor',
+  NOT_APPLICABLE: 'This does not apply to me',
+};
+
 export const optionSchema = z.object({
   /** Stable across translations and versions. What gets stored. */
   id: z.string().min(1).max(64),

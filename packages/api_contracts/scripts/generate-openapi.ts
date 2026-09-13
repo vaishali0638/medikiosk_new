@@ -483,11 +483,33 @@ const endpoints: readonly EndpointSpec[] = [
     phase: '11',
   },
   {
-    method: 'post',
-    path: '/followups/{id}/delta',
-    summary: 'Submit follow-up changes against the last clinician-verified visit.',
+    method: 'get',
+    path: '/precheckins/{preCheckinId}/previous-visit',
+    summary:
+      'The last clinician-verified visit, with the record itself so a clinician can ' +
+      'inspect what is carried forward. Never an AI draft.',
     tag: 'followup',
-    status: 'not-implemented',
+    status: 'implemented',
+    phase: '12',
+  },
+  {
+    method: 'post',
+    path: '/precheckins/{preCheckinId}/follow-up',
+    summary:
+      'Record what changed since the last verified visit. Replaces any previous delta, ' +
+      'so a patient may go back and correct it.',
+    tag: 'followup',
+    status: 'implemented',
+    phase: '12',
+  },
+  {
+    method: 'get',
+    path: '/precheckins/{preCheckinId}/delta',
+    summary:
+      'The follow-up as a clinician reads it: unchanged, changed and not-confirmed kept ' +
+      'apart, never one merged list.',
+    tag: 'followup',
+    status: 'implemented',
     phase: '12',
   },
   {

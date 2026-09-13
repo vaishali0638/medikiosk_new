@@ -153,6 +153,12 @@ export class TokenService {
           detail: { adapter: this.his.kind, latencyMs },
         });
 
+        // The visit is now real: the hospital has queued this patient. That is the point
+        // at which an `encounter` exists to be verified later and, eventually, to be the
+        // baseline a follow-up is measured against. Before this, there was only an
+        // intention to be seen.
+        await this.recordEncounter(row.pre_checkin_id, result.hisEncounterRef, result.token);
+
         // recordIssued returns the row as it was BEFORE room and queue status were
         // written, so they are carried over explicitly rather than read back.
         return this.toResponse(
@@ -260,6 +266,59 @@ export class TokenService {
     });
 
     throw new DomainError('TOKEN_RECONCILIATION_REQUIRED', correlationId, detail);
+  }
+
+  /**
+   * Creates the encounter for a realised visit, once.
+   *
+   * Idempotent by a partial unique index on `pre_checkin_id`: a reconciliation sweep that
+   * discovers a token was issued after all must not produce a second encounter, or the
+   * patient acquires two clinical visits for one attendance.
+   *
+   * It is deliberately NOT verified here. Nothing a kiosk does verifies a record — that
+   * is a clinician's act, and the columns for it stay null until Phase 13.
+   */
+  private async recordEncounter(
+    preCheckinId: string,
+    hisEncounterRef: string | undefined,
+    hisToken: string,
+  ): Promise<void> {
+    const visit = await this.db
+      .selectFrom('pre_checkin')
+      .innerJoin('department', 'department.id', 'pre_checkin.department_id')
+      .select([
+        'pre_checkin.patient_id as patientId',
+        'pre_checkin.department_id as departmentId',
+        'pre_checkin.visit_type as visitType',
+        'department.ayush_system as ayushSystem',
+      ])
+      .where('pre_checkin.id', '=', preCheckinId)
+      .executeTakeFirst();
+    if (!visit) return;
+
+    const encounter = await this.db
+      .insertInto('encounter')
+      .values({
+        patient_id: visit.patientId,
+        department_id: visit.departmentId,
+        pre_checkin_id: preCheckinId,
+        visit_type: visit.visitType,
+        ayush_system: visit.ayushSystem,
+        his_encounter_ref: hisEncounterRef ?? null,
+        his_token: hisToken,
+        token_issued_at: new Date(),
+      })
+      .onConflict((oc) => oc.column('pre_checkin_id').doNothing())
+      .returning('id')
+      .executeTakeFirst();
+
+    if (encounter) {
+      await this.db
+        .updateTable('pre_checkin')
+        .set({ encounter_id: encounter.id })
+        .where('id', '=', preCheckinId)
+        .execute();
+    }
   }
 
   private async loadVisit(preCheckinId: string, correlationId: string): Promise<VisitContext> {
