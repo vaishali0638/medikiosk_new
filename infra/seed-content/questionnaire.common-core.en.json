@@ -7,6 +7,7 @@
       "question": {
         "id": "chiefComplaint",
         "type": "SINGLE_SELECT",
+        "section": "REASON_FOR_VISIT",
         "prompt": "What brings you here today?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -46,6 +47,7 @@
       "question": {
         "id": "complaintDetail",
         "type": "TEXT",
+        "section": "REASON_FOR_VISIT",
         "prompt": "Please describe the problem in your own words.",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -62,6 +64,7 @@
       "question": {
         "id": "duration",
         "type": "DURATION",
+        "section": "DURATION_ONSET",
         "prompt": "How long has this problem been present?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -72,15 +75,15 @@
           },
           {
             "id": "1to7days",
-            "label": "1\u20137 days"
+            "label": "1–7 days"
           },
           {
             "id": "1to4weeks",
-            "label": "1\u20134 weeks"
+            "label": "1–4 weeks"
           },
           {
             "id": "1to6months",
-            "label": "1\u20136 months"
+            "label": "1–6 months"
           },
           {
             "id": "over6months",
@@ -93,6 +96,7 @@
       "question": {
         "id": "onset",
         "type": "SINGLE_SELECT",
+        "section": "DURATION_ONSET",
         "prompt": "How did it start?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -112,6 +116,7 @@
       "question": {
         "id": "progression",
         "type": "SINGLE_SELECT",
+        "section": "DURATION_ONSET",
         "prompt": "Since it started, has it changed?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -135,6 +140,7 @@
       "question": {
         "id": "severity",
         "type": "NUMERIC_SCALE",
+        "section": "SEVERITY_IMPACT",
         "prompt": "How severe is the problem right now?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -150,6 +156,7 @@
       "question": {
         "id": "impact",
         "type": "SINGLE_SELECT",
+        "section": "SEVERITY_IMPACT",
         "prompt": "Does it stop you doing your usual daily activities?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -173,6 +180,7 @@
       "question": {
         "id": "associatedSymptoms",
         "type": "MULTI_SELECT",
+        "section": "SEVERITY_IMPACT",
         "prompt": "Do you have any of these along with the main problem?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -208,6 +216,7 @@
       "question": {
         "id": "takingMedicine",
         "type": "YES_NO",
+        "section": "CURRENT_MEDICINES",
         "prompt": "Are you taking any medicine for this problem?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -227,6 +236,7 @@
       "question": {
         "id": "currentMedicines",
         "type": "TEXT",
+        "section": "CURRENT_MEDICINES",
         "prompt": "Which medicines are you taking? You can also show the doctor your prescription.",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -242,6 +252,7 @@
       "question": {
         "id": "hasAllergy",
         "type": "YES_NO",
+        "section": "ALLERGIES",
         "prompt": "Have you ever had a bad reaction to a medicine?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -261,6 +272,7 @@
       "question": {
         "id": "allergyDetail",
         "type": "TEXT",
+        "section": "ALLERGIES",
         "prompt": "Which medicine, and what happened?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -276,6 +288,7 @@
       "question": {
         "id": "chronicConditions",
         "type": "MULTI_SELECT",
+        "section": "PAST_HISTORY",
         "prompt": "Has a doctor told you that you have any of these?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -311,6 +324,7 @@
       "question": {
         "id": "pastSurgery",
         "type": "YES_NO",
+        "section": "PAST_HISTORY",
         "prompt": "Have you had any surgery or hospital stay before?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -330,6 +344,7 @@
       "question": {
         "id": "pastSurgeryDetail",
         "type": "TEXT",
+        "section": "PAST_HISTORY",
         "prompt": "What was it for, and roughly when?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -345,6 +360,7 @@
       "question": {
         "id": "previousTreatment",
         "type": "YES_NO",
+        "section": "PAST_HISTORY",
         "prompt": "Have you already had treatment for this problem somewhere else?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -364,6 +380,7 @@
       "question": {
         "id": "smoking",
         "type": "SINGLE_SELECT",
+        "section": "PAST_HISTORY",
         "prompt": "Do you use tobacco in any form?",
         "sensitive": true,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -388,6 +405,7 @@
       "question": {
         "id": "alcohol",
         "type": "SINGLE_SELECT",
+        "section": "PAST_HISTORY",
         "prompt": "Do you drink alcohol?",
         "sensitive": true,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -412,6 +430,7 @@
       "question": {
         "id": "familyHistory",
         "type": "MULTI_SELECT",
+        "section": "PAST_HISTORY",
         "prompt": "Has anyone in your close family had any of these?",
         "sensitive": true,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -444,6 +463,7 @@
       "question": {
         "id": "mentalWellbeing",
         "type": "SINGLE_SELECT",
+        "section": "OTHER",
         "prompt": "In the last two weeks, how often have you felt low or worried?",
         "sensitive": true,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
@@ -468,6 +488,7 @@
       "question": {
         "id": "patientQuestions",
         "type": "TEXT",
+        "section": "OTHER",
         "prompt": "Is there anything you would like the doctor to answer today?",
         "sensitive": false,
         "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],

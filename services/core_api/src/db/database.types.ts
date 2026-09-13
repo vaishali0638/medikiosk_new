@@ -390,6 +390,43 @@ export interface IntegrationOutboxTable {
 }
 
 /** The full schema as Kysely sees it. Table keys match the SQL table names exactly. */
+/** What the patient confirmed, at the moment they confirmed it. Master prompt §18. */
+export interface IntakeSubmissionTable {
+  id: Generated<string>;
+  pre_checkin_id: string;
+  kiosk_session_id: string | null;
+  kiosk_device_id: string | null;
+  consent_id: string;
+  questionnaire_key: string;
+  questionnaire_version: string;
+  ayush_module_version: string | null;
+  language_tag: string;
+  /** Constrained true in the database: an unconfirmed submission row cannot exist. */
+  review_confirmed: boolean;
+  reviewed_at: Date;
+  /** questionId -> revision, as at the moment of confirmation. */
+  answer_revisions: Record<string, number>;
+  corrections: unknown;
+  submitted_at: Generated<Date>;
+  correlation_id: string;
+}
+
+/** The pre-consultation draft a clinician reads. Never a verified record. */
+export interface ClinicalSummaryTable {
+  id: Generated<string>;
+  pre_checkin_id: string;
+  generator: 'DETERMINISTIC' | 'MODEL';
+  generator_version: string;
+  content: unknown;
+  validation_state: 'ACCEPTED' | 'REJECTED';
+  rejection_reasons: unknown;
+  provenance_label: string;
+  verified_by_user_id: string | null;
+  verified_at: Date | null;
+  created_at: Generated<Date>;
+  correlation_id: string;
+}
+
 export interface Database {
   hospital: HospitalTable;
   branch: BranchTable;
@@ -414,6 +451,8 @@ export interface Database {
   identity_attempt: IdentityAttemptTable;
   audit_event: AuditEventTable;
   integration_outbox: IntegrationOutboxTable;
+  intake_submission: IntakeSubmissionTable;
+  clinical_summary: ClinicalSummaryTable;
 }
 
 export type ConsentRow = Selectable<ConsentTable>;

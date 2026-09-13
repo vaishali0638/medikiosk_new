@@ -211,6 +211,18 @@ class KioskStrings {
     'documents.originalsSaved': 'The original documents are saved.',
     'documents.doctorMustVerify': 'Extracted information must be verified by the doctor.',
 
+    'review.title': 'Review before submission',
+    'review.subtitle': 'Please check your answers.',
+    'review.sentTo': 'This information will be sent to authorised hospital staff.',
+    'review.submit': 'I reviewed and want to submit',
+    'review.edit': 'Edit',
+    'review.label': 'Label',
+    'review.noAnswer': 'Not answered',
+    'review.documents': 'Documents you added',
+    'review.submitted.title': 'Your information has been sent',
+    'review.submitted.body':
+        'The doctor will see it before your consultation. You can collect your token next.',
+
     'startup.title': 'Starting up',
     'startup.body': 'Preparing this kiosk.',
     'startup.unavailable': 'This kiosk is not ready for use.',
@@ -396,6 +408,18 @@ class KioskStrings {
     'documents.notAccepted': 'स्वीकार नहीं हुआ',
     'documents.originalsSaved': 'मूल कागज़ात सुरक्षित रख लिए गए हैं।',
     'documents.doctorMustVerify': 'निकाली गई जानकारी की जाँच डॉक्टर द्वारा की जाएगी।',
+
+    'review.title': 'भेजने से पहले जाँच लें',
+    'review.subtitle': 'कृपया अपने उत्तर देख लें।',
+    'review.sentTo': 'यह जानकारी अधिकृत अस्पताल कर्मचारियों को भेजी जाएगी।',
+    'review.submit': 'मैंने जाँच लिया, अब भेजें',
+    'review.edit': 'बदलें',
+    'review.label': 'लेबल',
+    'review.noAnswer': 'उत्तर नहीं दिया',
+    'review.documents': 'आपके जोड़े गए कागज़ात',
+    'review.submitted.title': 'आपकी जानकारी भेज दी गई है',
+    'review.submitted.body':
+        'डॉक्टर परामर्श से पहले इसे देख लेंगे। अब आप अपना टोकन ले सकते हैं।',
 
     'startup.title': 'शुरू हो रहा है',
     'startup.body': 'यह कियोस्क तैयार किया जा रहा है।',

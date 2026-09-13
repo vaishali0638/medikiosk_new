@@ -54,9 +54,31 @@ export const durationBandSchema = z.object({
  * menstruation, family history, mental health. The kiosk shows a "why are we asking?"
  * explanation before them and makes declining as easy as answering.
  */
+/**
+ * Where an answer appears in the clinician's draft.
+ *
+ * Part of the authored questionnaire rather than something the composer infers from a
+ * question id. A reviewer approving the content decides that "Are you taking any medicine"
+ * belongs under current medicines; guessing it from a string in code would put the
+ * decision somewhere no clinician ever reads.
+ */
+export const DRAFT_SECTIONS = [
+  'REASON_FOR_VISIT',
+  'DURATION_ONSET',
+  'SEVERITY_IMPACT',
+  'CURRENT_MEDICINES',
+  'ALLERGIES',
+  'PAST_HISTORY',
+  'OTHER',
+] as const;
+
+export type DraftSectionKey = (typeof DRAFT_SECTIONS)[number];
+
 export const questionSchema = z.object({
   id: z.string().min(1).max(64),
   type: z.enum(QUESTION_TYPES),
+  /** Which section of the clinician's draft this answer belongs under. */
+  section: z.enum(DRAFT_SECTIONS).default('OTHER'),
   /** The question as the patient reads it. */
   prompt: z.string().min(1),
   /** Optional plain-language help, shown alongside rather than behind a tap. */

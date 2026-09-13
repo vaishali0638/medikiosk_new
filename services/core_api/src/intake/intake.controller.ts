@@ -133,8 +133,15 @@ export class IntakeController {
     }
 
     // A substantive answer must name options the published question actually offers.
-    if (nonCommittal.length === 0 && question.options) {
-      const offered = new Set(question.options.map((o) => o.id));
+    //
+    // The `?? []` matters. A question with no options at all — a numeric scale, a date,
+    // free text — offers nothing, so any option id sent against it is unknown. Treating a
+    // missing `options` as "no constraint" instead let an arbitrary identifier through,
+    // and it surfaced later as a quoted phrase in the clinician's draft attributed to the
+    // patient: `Patient reported: "moderate"`, where `moderate` was never a word anyone
+    // showed them.
+    if (nonCommittal.length === 0) {
+      const offered = new Set((question.options ?? []).map((o) => o.id));
       const unknown = parsed.data.selectedOptionIds.filter((id) => !offered.has(id));
       if (unknown.length > 0) {
         throw new DomainError(

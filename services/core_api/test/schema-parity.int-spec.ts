@@ -75,6 +75,7 @@ describe('schema shape (integration)', () => {
       [
         'audit_event',
         'branch',
+        'clinical_summary',
         'consent',
         'department',
         'document',
@@ -84,6 +85,7 @@ describe('schema shape (integration)', () => {
         'hospital',
         'hospital_language',
         'identity_attempt',
+        'intake_submission',
         'integration_outbox',
         'kiosk_device',
         'kiosk_session',

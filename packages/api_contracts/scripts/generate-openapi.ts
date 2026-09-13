@@ -432,6 +432,37 @@ const endpoints: readonly EndpointSpec[] = [
     phase: '10',
   },
   {
+    method: 'get',
+    path: '/precheckins/{preCheckinId}/review',
+    summary:
+      'What the patient checks before submitting: their own answers, each with a ' +
+      'provenance label. Carries nothing derived — no narrative, no draft.',
+    tag: 'summary',
+    status: 'implemented',
+    phase: '11',
+  },
+  {
+    method: 'post',
+    path: '/precheckins/{preCheckinId}/submit-intake',
+    summary:
+      'Records the patient’s confirmed review and produces the clinician draft. ' +
+      'Refuses without confirmation; idempotent per visit.',
+    tag: 'summary',
+    status: 'implemented',
+    phase: '11',
+    idempotent: true,
+  },
+  {
+    method: 'get',
+    path: '/precheckins/{preCheckinId}/draft',
+    summary:
+      'The pre-consultation draft, always labelled AI-ASSISTED DRAFT — NOT VERIFIED. ' +
+      'Every statement carries its own provenance; nothing in it is a clinical record.',
+    tag: 'summary',
+    status: 'implemented',
+    phase: '11',
+  },
+  {
     method: 'post',
     path: '/followups/{id}/delta',
     summary: 'Submit follow-up changes against the last clinician-verified visit.',

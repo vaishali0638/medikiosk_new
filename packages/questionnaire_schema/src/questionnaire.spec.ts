@@ -14,6 +14,7 @@ const q = (
 ): Questionnaire['nodes'][number]['question'] => ({
   id,
   type: 'SINGLE_SELECT',
+  section: 'OTHER',
   prompt: `Prompt for ${id}`,
   options: [
     { id: 'yes', label: 'Yes' },

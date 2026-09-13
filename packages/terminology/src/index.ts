@@ -24,3 +24,5 @@ export const PATIENT_FACING_SUMMARY_LABEL = 'Your information for the doctor' as
 /** The banner a clinician sees over any generated draft. */
 export const DOCTOR_FACING_DRAFT_LABEL =
   'AI-assisted pre-consultation draft — not verified' as const;
+
+export * from './draft-safety';
