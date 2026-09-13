@@ -355,6 +355,16 @@ const endpoints: readonly EndpointSpec[] = [
   },
   {
     method: 'get',
+    path: '/intakes/ayush-systems',
+    summary:
+      'AYUSH systems this hospital can run an intake for: an enabled department AND a ' +
+      'published, four-role-approved module.',
+    tag: 'intake',
+    status: 'implemented',
+    phase: '9',
+  },
+  {
+    method: 'get',
     path: '/intakes/{preCheckinId}/next',
     summary:
       'The next approved question, chosen by deterministic rules over the answers so far. ' +

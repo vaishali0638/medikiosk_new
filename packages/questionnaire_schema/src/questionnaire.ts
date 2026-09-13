@@ -29,7 +29,7 @@ export const questionnaireSchema = z.object({
    * release version with no named approval. So a version without a suffix is a claim that
    * someone signed it off, and that claim is checked.
    */
-  version: z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/),
+  version: z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/),
   language: z.string().min(2).max(16),
   title: z.string().min(1),
   /** Ordered. Branching skips nodes; it never reorders them. */
@@ -103,7 +103,9 @@ export function validateQuestionnaire(questionnaire: Questionnaire): string[] {
 
   // A release version asserts that a qualified practitioner approved this content. Content
   // that has not been reviewed must say so in its version, as a pre-release.
-  const isPreRelease = questionnaire.version.includes('-');
+  // Only the pre-release segment counts: build metadata may contain hyphens too, and
+  // `1.0.0+my-module.1.0.0` is a release.
+  const isPreRelease = questionnaire.version.split('+')[0]?.includes('-') ?? false;
   if (!isPreRelease && questionnaire.approvedBy.length === 0) {
     problems.push(
       `version ${questionnaire.version} is a release but names no approver; ` +
@@ -168,4 +170,56 @@ function referencedQuestions(condition: Condition | undefined): string[] {
     case 'NOT':
       return referencedQuestions(condition.of);
   }
+}
+
+/**
+ * Composes the common clinical core with a selected AYUSH module.
+ *
+ * Order is fixed and meaningful: the core first, then the system-specific module. A
+ * patient answers the questions every clinician needs before any questions specific to a
+ * system of medicine — so an intake abandoned halfway still carries the universally
+ * useful part, and a module that turns out to be wrong can be withdrawn without losing
+ * the core history.
+ *
+ * Question ids must not collide. Two modules using `agni` for different things would
+ * make a stored answer ambiguous, so composition refuses rather than silently
+ * overwriting, and the caller surfaces it as a governance error.
+ */
+export function compose(
+  core: Questionnaire,
+  module: Questionnaire | null,
+): { questionnaire: Questionnaire; problems: string[] } {
+  if (!module) return { questionnaire: core, problems: [] };
+
+  const problems: string[] = [];
+  const coreIds = new Set(core.nodes.map((n) => n.question.id));
+
+  for (const node of module.nodes) {
+    if (coreIds.has(node.question.id)) {
+      problems.push(
+        `module "${module.key}" reuses question id "${node.question.id}" from the core`,
+      );
+    }
+  }
+
+  if (module.language !== core.language) {
+    // Half an interview in a language the patient did not choose is not an interview.
+    problems.push(
+      `module "${module.key}" is published in ${module.language}, the core in ${core.language}`,
+    );
+  }
+
+  return {
+    questionnaire: {
+      ...core,
+      // Both versions travel together: an answer must be reconstructable from what the
+      // patient was actually shown, which was the composition, not either half.
+      // Semver BUILD METADATA (`+`), which is exactly what it is: the same core content,
+      // built with a module. `@` is not legal here, and producing invalid versions in a
+      // field other systems will parse is how integration bugs start.
+      version: `${core.version}+${module.key}.${module.version}`,
+      nodes: [...core.nodes, ...module.nodes],
+    },
+    problems,
+  };
 }

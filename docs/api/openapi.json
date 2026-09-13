@@ -3983,6 +3983,92 @@
         }
       }
     },
+    "/v1/intakes/ayush-systems": {
+      "get": {
+        "summary": "AYUSH systems this hospital can run an intake for: an enabled department AND a published, four-role-approved module.",
+        "tags": [
+          "intake"
+        ],
+        "x-status": "implemented",
+        "x-phase": "9",
+        "parameters": [
+          {
+            "name": "x-correlation-id",
+            "in": "header",
+            "required": true,
+            "description": "UUID correlating one patient journey across every service.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-kiosk-device",
+            "in": "header",
+            "required": true,
+            "description": "Kiosk device code, e.g. `MK-OPD-03`. Identification, not authentication — Phase 15 adds mutual-TLS device certificates.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Consent missing, expired or declined.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting state, such as a token already issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Neutral rejection. Carries no clinical detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The hospital HIS could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/intakes/{preCheckinId}/next": {
       "get": {
         "summary": "The next approved question, chosen by deterministic rules over the answers so far. No model participates in choosing the clinical interview.",

@@ -33,7 +33,7 @@ packages/design_tokens        Canonical theme (generates Dart + CSS)
 packages/questionnaire_schema Questionnaire schema, branching language and engine
 packages/terminology          Provenance labels and value sets
 infra/docker           Local development stack
-infra/migrations       PostgreSQL migrations (12 files, 23 tables)
+infra/migrations       PostgreSQL migrations (14 files, 23 tables)
 infra/seed-content     Placeholder governed content (consent notices)
 tools                  Repository guards (forbidden-option scan)
 docs                   Architecture, API, security, runbooks
@@ -114,18 +114,19 @@ deployment does not provide:
 
 ## Build status
 
-| Phase | Scope                                                                         | Status                                              |
-| ----- | ----------------------------------------------------------------------------- | --------------------------------------------------- |
-| 0     | Discovery, clinical governance, hospital sign-off                             | Not started — organisational                        |
-| 1     | Repo, design system, CI, health check                                         | Complete                                            |
-| 2     | Database, contracts, state machines                                           | Complete                                            |
-| 3     | Kiosk shell and session security                                              | Complete                                            |
-| 4     | Language, accessibility, consent                                              | Complete                                            |
-| 5     | Identity and patient matching                                                 | Complete                                            |
-| 6     | Mobile pre-check-in and signed QR                                             | Complete                                            |
-| 7     | HIS/queue token adapter                                                       | Complete                                            |
-| **8** | **New registration and common clinical core**                                 | **Complete** — content is an unapproved placeholder |
-| 9–18  | AYUSH, OCR, AI, follow-up, doctor, governance, hardening, ops, pilot, release | Next: 9 — AYUSH modules                             |
+| Phase | Scope                                                                  | Status                                          |
+| ----- | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| 0     | Discovery, clinical governance, hospital sign-off                      | Not started — organisational                    |
+| 1     | Repo, design system, CI, health check                                  | Complete                                        |
+| 2     | Database, contracts, state machines                                    | Complete                                        |
+| 3     | Kiosk shell and session security                                       | Complete                                        |
+| 4     | Language, accessibility, consent                                       | Complete                                        |
+| 5     | Identity and patient matching                                          | Complete                                        |
+| 6     | Mobile pre-check-in and signed QR                                      | Complete                                        |
+| 7     | HIS/queue token adapter                                                | Complete                                        |
+| 8     | New registration and common clinical core                              | Complete — content is an unapproved placeholder |
+| **9** | **AYUSH modules**                                                      | **Engine complete** — no approved module exists |
+| 10–18 | OCR, AI, follow-up, doctor, governance, hardening, ops, pilot, release | Next: 10 — document capture                     |
 
 Every unbuilt capability is behind a feature flag that defaults to off, and a disabled
 feature must not appear in any UI.

@@ -167,6 +167,16 @@ class KioskStrings {
     'question.answer': 'Answer this question',
     'question.progress': 'Question',
 
+    'ayush.title': 'Select AYUSH system',
+    'ayush.subtitle': 'If you are not sure, the doctor will decide with you.',
+    'ayush.ayurveda': 'Ayurveda',
+    'ayush.unani': 'Unani',
+    'ayush.siddha': 'Siddha',
+    'ayush.yogaNaturopathy': 'Yoga & Naturopathy',
+    'ayush.sowaRigpa': 'Sowa-Rigpa',
+    'ayush.homoeopathy': 'Homoeopathy',
+    'ayush.notSure': 'I am not sure',
+
     'startup.title': 'Starting up',
     'startup.body': 'Preparing this kiosk.',
     'startup.unavailable': 'This kiosk is not ready for use.',
@@ -308,6 +318,16 @@ class KioskStrings {
     'question.whyAsking': 'हम यह क्यों पूछ रहे हैं?',
     'question.answer': 'इस प्रश्न का उत्तर दें',
     'question.progress': 'प्रश्न',
+
+    'ayush.title': 'आयुष प्रणाली चुनें',
+    'ayush.subtitle': 'यदि आप निश्चित नहीं हैं, तो डॉक्टर आपके साथ तय करेंगे।',
+    'ayush.ayurveda': 'आयुर्वेद',
+    'ayush.unani': 'यूनानी',
+    'ayush.siddha': 'सिद्ध',
+    'ayush.yogaNaturopathy': 'योग एवं प्राकृतिक चिकित्सा',
+    'ayush.sowaRigpa': 'सोवा-रिग्पा',
+    'ayush.homoeopathy': 'होम्योपैथी',
+    'ayush.notSure': 'मुझे पक्का नहीं पता',
 
     'startup.title': 'शुरू हो रहा है',
     'startup.body': 'यह कियोस्क तैयार किया जा रहा है।',

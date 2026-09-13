@@ -1,5 +1,6 @@
 import {
   applicableQuestions,
+  compose,
   evaluate,
   nextQuestion,
   validateQuestionnaire,
@@ -215,5 +216,60 @@ describe('publish-time validation', () => {
       questionnaire([{ question: q('severity', { type: 'NUMERIC_SCALE', options: undefined }) }]),
     );
     expect(problems.join()).toMatch(/defines no scale/);
+  });
+});
+
+describe('composing a module onto the core', () => {
+  const core = questionnaire([{ question: q('chiefComplaint') }, { question: q('duration') }]);
+  const module: Questionnaire = {
+    key: 'ayurveda',
+    version: '1.0.0',
+    language: 'en',
+    title: 'Ayurveda',
+    nodes: [{ question: q('prakriti') }, { question: q('agni') }],
+    approvedBy: ['Dr A Sharma'],
+  };
+
+  it('returns the core unchanged when no module is selected', () => {
+    const { questionnaire: composed, problems } = compose(core, null);
+    expect(problems).toEqual([]);
+    expect(composed.nodes.map((n: Questionnaire['nodes'][number]) => n.question.id)).toEqual([
+      'chiefComplaint',
+      'duration',
+    ]);
+  });
+
+  it('puts the core first, then the module', () => {
+    // An intake abandoned halfway still carries the universally useful part.
+    const { questionnaire: composed } = compose(core, module);
+    expect(composed.nodes.map((n: Questionnaire['nodes'][number]) => n.question.id)).toEqual([
+      'chiefComplaint',
+      'duration',
+      'prakriti',
+      'agni',
+    ]);
+  });
+
+  it('records both versions, because that is what the patient was shown', () => {
+    const { questionnaire: composed } = compose(core, module);
+    expect(composed.version).toBe('1.0.0+ayurveda.1.0.0');
+  });
+
+  it('refuses a module that reuses a core question id', () => {
+    // Two meanings for one stored answer is not something to resolve silently.
+    const clashing: Questionnaire = { ...module, nodes: [{ question: q('duration') }] };
+    expect(compose(core, clashing).problems.join()).toMatch(/reuses question id "duration"/);
+  });
+
+  it('refuses a module published in another language', () => {
+    const mismatched: Questionnaire = { ...module, language: 'hi' };
+    expect(compose(core, mismatched).problems.join()).toMatch(/published in hi/);
+  });
+
+  it('walks straight from the core into the module', () => {
+    const { questionnaire: composed } = compose(core, module);
+    expect(
+      nextQuestion(composed, { chiefComplaint: ['yes'], duration: ['yes'] })?.question.id,
+    ).toBe('prakriti');
   });
 });

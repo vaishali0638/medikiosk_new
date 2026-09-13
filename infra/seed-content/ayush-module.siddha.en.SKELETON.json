@@ -1,0 +1,75 @@
+{
+  "_WARNING": "NOT A QUESTIONNAIRE. NOT PUBLISHABLE. NOT CLINICAL CONTENT.",
+  "_whatThisIs": [
+    "The section headings for an Ayurveda intake module, transcribed from the MediKiosk",
+    "specification (master prompt, section 13). Nothing more.",
+    "",
+    "There are no questions here, and none will be added by a developer or a model. The",
+    "specification is explicit: 'Every module must be approved by qualified practitioners",
+    "of that system. An LLM must not invent clinical protocols or select a remedy.'",
+    "Prakriti and Vikriti assessment is diagnostic reasoning within a system of medicine;",
+    "generating plausible-looking questions for it would produce something that reads as",
+    "clinical content, would be indistinguishable from the real thing to a reviewer",
+    "skimming it, and would be wrong in ways only a practitioner could detect.",
+    "",
+    "This file exists so the work is scoped, not so it looks done."
+  ],
+  "_howToUseIt": [
+    "A qualified BAMS practitioner authors the questions for each section.",
+    "A second practitioner reviews them clinically.",
+    "A translation reviewer approves each language.",
+    "A safety reviewer checks the failure modes.",
+    "The result is published through the governance console (Phase 14), which enforces",
+    "all four approvals from at least two distinct people before it can go live."
+  ],
+  "key": "siddha",
+  "targetLanguages": ["en", "hi"],
+  "sections": [
+    {
+      "id": "vali---azhal---iyyam",
+      "title": "Vali / Azhal / Iyyam",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "diet-and-lifestyle",
+      "title": "Diet and lifestyle",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "sleep-and-bowel-urinary-patterns",
+      "title": "Sleep and bowel/urinary patterns",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "previous-treatment",
+      "title": "Previous treatment",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "current-medicines-and-investigations",
+      "title": "Current medicines and investigations",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    }
+  ],
+  "requiredApprovals": [
+    {
+      "role": "AUTHOR",
+      "qualification": "registered practitioner of siddha"
+    },
+    {
+      "role": "CLINICAL_REVIEWER",
+      "qualification": "registered practitioner of siddha"
+    },
+    {
+      "role": "TRANSLATION_REVIEWER"
+    },
+    {
+      "role": "SAFETY_REVIEWER"
+    }
+  ]
+}

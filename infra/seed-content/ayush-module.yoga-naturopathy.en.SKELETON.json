@@ -1,0 +1,93 @@
+{
+  "_WARNING": "NOT A QUESTIONNAIRE. NOT PUBLISHABLE. NOT CLINICAL CONTENT.",
+  "_whatThisIs": [
+    "The section headings for an Ayurveda intake module, transcribed from the MediKiosk",
+    "specification (master prompt, section 13). Nothing more.",
+    "",
+    "There are no questions here, and none will be added by a developer or a model. The",
+    "specification is explicit: 'Every module must be approved by qualified practitioners",
+    "of that system. An LLM must not invent clinical protocols or select a remedy.'",
+    "Prakriti and Vikriti assessment is diagnostic reasoning within a system of medicine;",
+    "generating plausible-looking questions for it would produce something that reads as",
+    "clinical content, would be indistinguishable from the real thing to a reviewer",
+    "skimming it, and would be wrong in ways only a practitioner could detect.",
+    "",
+    "This file exists so the work is scoped, not so it looks done."
+  ],
+  "_howToUseIt": [
+    "A qualified BAMS practitioner authors the questions for each section.",
+    "A second practitioner reviews them clinically.",
+    "A translation reviewer approves each language.",
+    "A safety reviewer checks the failure modes.",
+    "The result is published through the governance console (Phase 14), which enforces",
+    "all four approvals from at least two distinct people before it can go live."
+  ],
+  "key": "yoga-naturopathy",
+  "targetLanguages": ["en", "hi"],
+  "sections": [
+    {
+      "id": "activity",
+      "title": "Activity",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "exercise-capacity",
+      "title": "Exercise capacity",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "posture",
+      "title": "Posture",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "breathing",
+      "title": "Breathing",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "sleep",
+      "title": "Sleep",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "stress",
+      "title": "Stress",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "diet",
+      "title": "Diet",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    },
+    {
+      "id": "contraindications",
+      "title": "Contraindications",
+      "questions": [],
+      "status": "AWAITING_AUTHORSHIP"
+    }
+  ],
+  "requiredApprovals": [
+    {
+      "role": "AUTHOR",
+      "qualification": "registered practitioner of yoga-naturopathy"
+    },
+    {
+      "role": "CLINICAL_REVIEWER",
+      "qualification": "registered practitioner of yoga-naturopathy"
+    },
+    {
+      "role": "TRANSLATION_REVIEWER"
+    },
+    {
+      "role": "SAFETY_REVIEWER"
+    }
+  ]
+}

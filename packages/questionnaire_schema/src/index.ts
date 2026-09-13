@@ -17,6 +17,7 @@ export {
   nextQuestion,
   applicableQuestions,
   validateQuestionnaire,
+  compose,
   type Questionnaire,
   type QuestionnaireNode,
   type NextQuestion,

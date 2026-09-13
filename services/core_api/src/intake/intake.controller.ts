@@ -40,6 +40,24 @@ export class IntakeController {
     private readonly preCheckins: PreCheckinService,
   ) {}
 
+  @Get('ayush-systems')
+  @ApiOperation({
+    summary:
+      'AYUSH systems this hospital can run an intake for: an enabled department AND a ' +
+      'published, approved module.',
+  })
+  async ayushSystems(
+    @Req() req: KioskRequest,
+    @Query('language') language?: string,
+  ): Promise<{ systems: string[] }> {
+    return {
+      systems: await this.questionnaires.availableAyushSystems(
+        req.kiosk.hospitalId,
+        language ?? 'en',
+      ),
+    };
+  }
+
   @Get(':preCheckinId/next')
   @ApiOperation({
     summary: 'The next approved question, chosen by deterministic rules over the answers so far.',
@@ -49,7 +67,7 @@ export class IntakeController {
     @Param('preCheckinId') preCheckinId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
-    const { questionnaire, lookup } = await this.load(req, preCheckinId, language);
+    const { questionnaire, lookup, moduleUsed } = await this.load(req, preCheckinId, language);
     const next = this.questionnaires.next(questionnaire, lookup);
 
     if (!next) {
@@ -57,6 +75,7 @@ export class IntakeController {
         complete: true,
         questionnaireKey: questionnaire.key,
         questionnaireVersion: questionnaire.version,
+        ayushModule: moduleUsed,
       };
     }
 
@@ -64,6 +83,7 @@ export class IntakeController {
       complete: false,
       questionnaireKey: questionnaire.key,
       questionnaireVersion: questionnaire.version,
+      ayushModule: moduleUsed,
       answeredCount: next.answeredCount,
       totalApplicable: next.totalApplicable,
       question: next.question,
@@ -149,7 +169,7 @@ export class IntakeController {
     @Param('preCheckinId') preCheckinId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
-    const { questionnaire, lookup } = await this.load(req, preCheckinId, language);
+    const { questionnaire, lookup, moduleUsed } = await this.load(req, preCheckinId, language);
     const answers = await this.answers.latest(preCheckinId);
     const byId = new Map(answers.map((a) => [a.questionId, a]));
 
@@ -176,6 +196,7 @@ export class IntakeController {
     return {
       questionnaireKey: questionnaire.key,
       questionnaireVersion: questionnaire.version,
+      ayushModule: moduleUsed,
       complete: items.every((item) => item.answered),
       items,
     };
@@ -196,12 +217,21 @@ export class IntakeController {
     await this.consents.requireActiveConsent(preCheckin.patient_id, req.correlationId);
 
     const tag = language ?? 'en';
-    const questionnaire = await this.questionnaires.findPublished(
+
+    // The AYUSH system is DERIVED from the department the visit is booked into, never
+    // taken from the request. Two reasons: a client cannot switch the interview
+    // underneath a patient by sending a different system on the next call, and there is
+    // only one place the system is recorded, so it cannot disagree with itself.
+    const ayushSystem = await this.questionnaires.systemForDepartment(preCheckin.department_id);
+
+    const composed = await this.questionnaires.findComposed(
       req.kiosk.hospitalId,
       COMMON_CORE_KEY,
       tag,
+      ayushSystem,
     );
-    if (!questionnaire) {
+
+    if (!composed) {
       throw new DomainError(
         'VALIDATION_FAILED',
         req.correlationId,
@@ -209,6 +239,11 @@ export class IntakeController {
       );
     }
 
-    return { preCheckin, questionnaire, lookup: await this.answers.lookup(preCheckinId) };
+    return {
+      preCheckin,
+      questionnaire: composed.questionnaire,
+      moduleUsed: composed.moduleUsed,
+      lookup: await this.answers.lookup(preCheckinId),
+    };
   }
 }
