@@ -29,7 +29,14 @@ export async function truncateAll(db: Kysely<Database>): Promise<void> {
       audit_event, integration_outbox, triage_status, ocr_extraction, document,
       follow_up_delta, questionnaire_response, token_request, qr_nonce,
       kiosk_session, pre_checkin, encounter, consent, patient_identifier, patient,
-      governance_version, kiosk_device, hospital_language, department, branch, hospital
+      governance_transition, governance_version, kiosk_device, hospital_language,
+      department, branch, hospital,
+      staff_session, staff_user, break_glass_access, encounter_export,
+      legal_hold, retention_policy,
+      -- Rate-limit windows are state too. Without this, a suite that signs in as the
+      -- same subject in a dozen tests exhausts the bucket partway through and the rest
+      -- fail with 429 — which is the limiter working, on the wrong thing.
+      rate_limit_bucket
     RESTART IDENTITY CASCADE`.execute(db);
 }
 

@@ -9,6 +9,7 @@ import {
   type ResolveIdentityResponse,
 } from '@medikiosk/api-contracts';
 import { DomainError } from '../common/domain-error';
+import { RateLimitService } from '../security/rate-limit.service';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { KioskSessionRepository } from '../kiosk/kiosk-session.repository';
 import { IdentityService, type ResolveContext } from './identity.service';
@@ -24,6 +25,7 @@ export class IdentityController {
     private readonly otp: OtpService,
     private readonly registration: RegistrationService,
     private readonly sessions: KioskSessionRepository,
+    private readonly rateLimits: RateLimitService,
   ) {}
 
   @Post('otp')
@@ -36,6 +38,11 @@ export class IdentityController {
     if (!parsed.success) {
       throw new DomainError('VALIDATION_FAILED', req.correlationId, 'bad otp request');
     }
+
+    // Per DEVICE. Sends per number are already limited inside OtpService, and this is the
+    // case that check cannot see: one kiosk walking through a list of numbers, each of
+    // them under its own limit.
+    await this.rateLimits.consume('OTP_REQUEST_PER_KIOSK', req.kiosk.deviceCode);
 
     const issued = await this.otp.issue({
       hospitalId: req.kiosk.hospitalId,

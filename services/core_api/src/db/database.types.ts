@@ -513,6 +513,34 @@ export interface GovernanceTransitionTable {
   correlation_id: string;
 }
 
+export interface RateLimitBucketTable {
+  bucket_key: string;
+  window_started_at: Date;
+  attempt_count: Generated<number>;
+}
+
+export interface RetentionPolicyTable {
+  id: Generated<string>;
+  hospital_id: string;
+  data_kind: string;
+  retain_days: number;
+  approved_by: string;
+  approved_at: Date;
+  created_at: Generated<Date>;
+}
+
+export interface LegalHoldTable {
+  id: Generated<string>;
+  hospital_id: string;
+  patient_id: string | null;
+  encounter_id: string | null;
+  reason: string;
+  placed_by: string;
+  placed_at: Generated<Date>;
+  released_at: Date | null;
+  released_by: string | null;
+}
+
 export interface Database {
   hospital: HospitalTable;
   branch: BranchTable;
@@ -521,6 +549,9 @@ export interface Database {
   kiosk_device: KioskDeviceTable;
   governance_version: GovernanceVersionTable;
   governance_transition: GovernanceTransitionTable;
+  rate_limit_bucket: RateLimitBucketTable;
+  retention_policy: RetentionPolicyTable;
+  legal_hold: LegalHoldTable;
   patient: PatientTable;
   patient_identifier: PatientIdentifierTable;
   consent: ConsentTable;

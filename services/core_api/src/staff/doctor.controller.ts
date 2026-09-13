@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import { DOCTOR_FACING_DRAFT_LABEL, PROVENANCE_LABELS } from '@medikiosk/terminology';
 import { DomainError } from '../common/domain-error';
+import { RateLimitService } from '../security/rate-limit.service';
 import { UuidParamPipe } from '../common/uuid-param.pipe';
 import type { CorrelatedRequest } from '../common/correlation-id.middleware';
 import { DocumentService } from '../documents/document.service';
@@ -50,6 +51,7 @@ export class DoctorController {
     private readonly extractions: ExtractionService,
     private readonly links: DocumentLinkService,
     private readonly exports: ExportService,
+    private readonly rateLimits: RateLimitService,
   ) {}
 
   @Post('session')
@@ -63,6 +65,12 @@ export class DoctorController {
     if (!parsed.success) {
       throw new DomainError('NOT_AUTHENTICATED', req.correlationId, 'bad sign-in payload');
     }
+
+    // Keyed on the credential rather than the IP: a hospital's staff all arrive from one
+    // or two addresses, so limiting by address would throttle a whole department the
+    // moment one person mistyped. Credential stuffing tries many credentials, which this
+    // catches, while one person retrying their own login is barely counted.
+    await this.rateLimits.consume('STAFF_SIGN_IN', parsed.data.credential);
 
     const result = await this.auth.signIn(parsed.data.credential, req.correlationId);
     return {

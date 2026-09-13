@@ -8,6 +8,7 @@ import {
   type TokenResponse,
 } from '@medikiosk/api-contracts';
 import { DomainError } from '../common/domain-error';
+import { RateLimitService } from '../security/rate-limit.service';
 import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
 import { KioskSessionRepository } from '../kiosk/kiosk-session.repository';
@@ -22,6 +23,7 @@ export class ArrivalController {
     private readonly arrivals: ArrivalService,
     private readonly tokens: TokenService,
     private readonly sessions: KioskSessionRepository,
+    private readonly rateLimits: RateLimitService,
   ) {}
 
   @Post('check-in')
@@ -29,6 +31,10 @@ export class ArrivalController {
     summary: 'Validate a scanned QR. Discloses nothing on any failure path.',
   })
   async checkIn(@Req() req: KioskRequest, @Body() body: unknown): Promise<ArrivalCheckInResponse> {
+    // A patient scans once, or twice if the first attempt missed. A script scans forever,
+    // and every refusal is deliberately identical, so without a limit the endpoint is a
+    // free oracle for testing stolen codes.
+    await this.rateLimits.consume('ARRIVAL_CHECK_IN', req.kiosk.deviceCode);
     const parsed = arrivalCheckInRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new DomainError('QR_INVALID', req.correlationId, 'bad check-in payload');
