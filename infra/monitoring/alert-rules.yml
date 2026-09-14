@@ -1,0 +1,99 @@
+# Alert rules over the metrics the API exposes.
+#
+# These duplicate the conditions `/v1/ops/alerts` evaluates, on purpose: that endpoint
+# answers "what is wrong right now" when somebody asks, and these fire when nobody is
+# asking. Both point at the same runbook, so a page and a dashboard lead to the same
+# instructions.
+#
+# Every rule carries a `runbook` annotation. An alert with no instructions is a 2am page
+# that begins with the recipient reading source code.
+
+groups:
+  - name: medikiosk-availability
+    rules:
+      - alert: CoreApiDown
+        expr: up{job="medikiosk-core-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'A MediKiosk API node has been unreachable for two minutes.'
+          runbook: docs/runbooks/alerts.md
+
+      - alert: KioskOffline
+        expr: medikiosk_kiosk_offline > 0
+        # Fifteen minutes, not instant: a kiosk restarting after an update is briefly
+        # silent and nobody should be woken for that.
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $value }} enabled kiosk(s) have not been seen.'
+          runbook: docs/runbooks/alerts.md#kioskoffline
+
+  - name: medikiosk-clinical-safety
+    rules:
+      - alert: SessionEndedWithoutWipe
+        expr: medikiosk_sessions_ended_without_wipe > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          # A privacy incident, not a performance one: a device may still be holding a
+          # patient's answers and photographs of their documents.
+          summary: '{{ $value }} session(s) ended with no wipe attestation.'
+          runbook: docs/runbooks/alerts.md#sessionendedwithoutwipe
+
+      - alert: TokenReconciliationRequired
+        expr: medikiosk_token_reconciliation_required > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $value }} token request(s) have an unknown outcome.'
+          runbook: docs/runbooks/qr-token-failures.md
+
+      - alert: ExportReconciliationRequired
+        expr: medikiosk_export_reconciliation_required > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $value }} clinical record export(s) have an unknown outcome.'
+          runbook: docs/runbooks/alerts.md#exportreconciliationrequired
+
+  - name: medikiosk-throughput
+    rules:
+      - alert: OcrQueueGrowing
+        # Depth alone is not a fault — a burst of uploads is normal. Depth that never comes
+        # back down means nothing is consuming the queue.
+        expr: min_over_time(medikiosk_ocr_queue_depth[30m]) > 20
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'The OCR queue has not fallen below 20 for half an hour.'
+          runbook: docs/runbooks/alerts.md
+
+      - alert: RepeatedMalwareUploads
+        expr: increase(medikiosk_documents_rejected_malware_total[1h]) >= 3
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $value }} uploads refused by the scanner in an hour.'
+          runbook: docs/runbooks/alerts.md#repeatedmalwareuploads
+
+      - alert: PatientsNotCompleting
+        # Whether the thing works for the people using it, as opposed to whether the
+        # servers are up. Only meaningful once a clinic is busy, hence the floor.
+        expr: |
+          increase(medikiosk_sessions_started_total[2h]) > 20
+          and
+          increase(medikiosk_sessions_completed_total[2h])
+            / increase(medikiosk_sessions_started_total[2h]) < 0.5
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Fewer than half of kiosk sessions are reaching a token.'
+          runbook: docs/runbooks/alerts.md

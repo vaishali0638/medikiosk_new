@@ -114,21 +114,36 @@ deployment does not provide:
 
 ## Build status
 
-| Phase  | Scope                                                         | Status                                          |
-| ------ | ------------------------------------------------------------- | ----------------------------------------------- |
-| 0      | Discovery, clinical governance, hospital sign-off             | Not started — organisational                    |
-| 1      | Repo, design system, CI, health check                         | Complete                                        |
-| 2      | Database, contracts, state machines                           | Complete                                        |
-| 3      | Kiosk shell and session security                              | Complete                                        |
-| 4      | Language, accessibility, consent                              | Complete                                        |
-| 5      | Identity and patient matching                                 | Complete                                        |
-| 6      | Mobile pre-check-in and signed QR                             | Complete                                        |
-| 7      | HIS/queue token adapter                                       | Complete                                        |
-| 8      | New registration and common clinical core                     | Complete — content is an unapproved placeholder |
-| 9      | AYUSH modules                                                 | Engine complete — no approved module exists     |
-| 10     | Documents and OCR                                             | Pipeline complete — no OCR engine ships         |
-| **11** | **Patient review and safe AI draft**                          | **Gate complete** — no generator ships          |
-| 12–18  | Follow-up, doctor, governance, hardening, ops, pilot, release | Next: 12 — follow-up delta                      |
+| Phase | Scope                                     | Status                                                     |
+| ----- | ----------------------------------------- | ---------------------------------------------------------- |
+| 0     | Discovery, clinical governance, sign-off  | **Not started** — organisational, and it blocks the pilot  |
+| 1     | Repo, design system, CI, health check     | Complete                                                   |
+| 2     | Database, contracts, state machines       | Complete                                                   |
+| 3     | Kiosk shell and session security          | Complete                                                   |
+| 4     | Language, accessibility, consent          | Complete — notice content is an unapproved placeholder     |
+| 5     | Identity and patient matching             | Complete                                                   |
+| 6     | Mobile pre-check-in and signed QR         | Complete                                                   |
+| 7     | HIS/queue token adapter                   | Complete — sandbox adapter only                            |
+| 8     | New registration and common clinical core | Complete — questionnaire is an unapproved placeholder      |
+| 9     | AYUSH modules                             | Engine complete — no approved module exists                |
+| 10    | Documents and OCR                         | Pipeline complete — no OCR engine ships                    |
+| 11    | Patient review and safe AI draft          | Safety gate complete — no generator ships                  |
+| 12    | Regular follow-up delta                   | Complete                                                   |
+| 13    | Doctor dashboard and HIS export           | Complete — sandbox SSO and EMR adapters                    |
+| 14    | Clinical governance console               | Complete                                                   |
+| 15    | Security, privacy and compliance          | Controls built — six named gaps in the phase note          |
+| 16    | Observability and operations              | Metrics and alerts built — no dashboard, no alert delivery |
+| 17    | Full testing and pilot                    | Test matrix complete — **the pilot needs a hospital**      |
+| 18    | Production deployment and release         | Manifests and process written — **not production-ready**   |
+
+The three kiosk journeys, the patient PWA, the clinician dashboard and the governance
+console are all built and reachable. What is not built is listed per phase in
+`docs/architecture/`, and the deliverables are indexed in [docs/deliverables.md](docs/deliverables.md).
+
+**This system is not ready for patients.** `tools/src/production-readiness.ts` evaluates the
+specification's sixteen readiness criteria and reports the blockers; ten are met, and three
+of the six that are not cannot be met by any repository. The largest is that no practitioner
+has authored or reviewed any clinical content.
 
 Every unbuilt capability is behind a feature flag that defaults to off, and a disabled
 feature must not appear in any UI.

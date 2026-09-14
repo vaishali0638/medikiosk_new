@@ -1,0 +1,29 @@
+# Scrape configuration for the MediKiosk core API.
+#
+# The metrics endpoint sits behind the operations credential, so the scrape carries it.
+# That key grants no access to clinical data — it reads queue depths and counts, and the
+# metrics themselves are asserted by test to contain no patient identifier.
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/alert-rules.yml
+
+scrape_configs:
+  - job_name: medikiosk-core-api
+    metrics_path: /v1/metrics
+    scheme: http
+    authorization:
+      type: Bearer
+      # A file, not an inline value: the key is a secret and this file is committed.
+      credentials_file: /etc/prometheus/ops-api-key
+    static_configs:
+      - targets:
+          - core_api_a:3000
+          - core_api_b:3000
+    relabel_configs:
+      # Keep the node name, so an alert can say which one is unhealthy.
+      - source_labels: [__address__]
+        target_label: node

@@ -1,0 +1,139 @@
+# MediKiosk — production application tier.
+#
+# WHAT THIS FILE IS: the application services, run redundantly behind a reverse proxy,
+# with every secret injected from the environment and nothing persisted locally except
+# what a stateless node may lose.
+#
+# WHAT IT IS NOT, and cannot be:
+#
+#   * PostgreSQL. There is no database here on purpose. The specification asks for
+#     primary/standby or managed HA, and a Postgres container with a local volume is
+#     neither — it is a single point of failure wearing a production label. Point
+#     DATABASE_URL at the hospital's managed instance or its own replicated cluster.
+#   * Object storage. Same reasoning: MinIO in a container with one volume is not the
+#     "encrypted MinIO/S3" the specification means. Documents are encrypted by the
+#     application before they are written, so the store holds ciphertext either way —
+#     but its durability is the hospital's to provide.
+#   * The segmented kiosk VLAN, the UPS, and the MDM enrolment. Those are network and
+#     facilities work; `docs/runbooks/kiosk-device-setup.md` covers the devices.
+#
+# Deploy with:
+#   docker compose -f infra/deployment/docker-compose.prod.yml --env-file <secrets> up -d
+
+name: medikiosk-prod
+
+x-core-api: &core-api
+  image: ${MEDIKIOSK_IMAGE:?set MEDIKIOSK_IMAGE to a pinned digest, never :latest}
+  restart: always
+  # Read-only root filesystem: the API writes nothing to disk. Documents go to object
+  # storage, logs to stdout. A container that cannot be written to is one an attacker
+  # who finds a file-write bug cannot use.
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  environment:
+    NODE_ENV: production
+    PORT: 3000
+    LOG_LEVEL: ${LOG_LEVEL:-log}
+    DATABASE_URL: ${DATABASE_URL:?required}
+    REDIS_URL: ${REDIS_URL:?required}
+
+    # Adapters. The application refuses to start in production with a sandbox selected,
+    # so these must name real integrations before this file is of any use.
+    HIS_ADAPTER: ${HIS_ADAPTER:?required}
+    HIS_BASE_URL: ${HIS_BASE_URL:?required}
+    SMS_ADAPTER: ${SMS_ADAPTER:?required}
+    OBJECT_STORE_ADAPTER: ${OBJECT_STORE_ADAPTER:?required}
+    OBJECT_STORE_ENDPOINT: ${OBJECT_STORE_ENDPOINT:?required}
+    OBJECT_STORE_BUCKET: ${OBJECT_STORE_BUCKET:?required}
+    MALWARE_SCANNER: ${MALWARE_SCANNER:?required}
+    STAFF_IDP: ${STAFF_IDP:?required}
+    EMR_EXPORT_ADAPTER: ${EMR_EXPORT_ADAPTER:?required}
+
+    # Keys. Every one of these belongs in Vault or a cloud KMS and is injected at start;
+    # none has a default, so a missing key stops the node rather than silently generating
+    # an ephemeral one that makes yesterday's documents unreadable.
+    OBJECT_ENCRYPTION_KEY: ${OBJECT_ENCRYPTION_KEY:?required}
+    OBJECT_ENCRYPTION_KEY_ID: ${OBJECT_ENCRYPTION_KEY_ID:?required}
+    QR_SIGNING_KEY: ${QR_SIGNING_KEY:?required}
+    QR_SIGNING_KEY_ID: ${QR_SIGNING_KEY_ID:?required}
+    QR_RETIRED_PUBLIC_KEYS: ${QR_RETIRED_PUBLIC_KEYS:-}
+    OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:?required}
+    OTP_KEY_ID: ${OTP_KEY_ID:?required}
+    DOCUMENT_LINK_KEY: ${DOCUMENT_LINK_KEY:?required}
+    OPS_API_KEY: ${OPS_API_KEY:?required}
+
+    CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?required}
+
+    # Off unless the hospital has approved the content and the integration behind them.
+    FEATURE_ABHA: ${FEATURE_ABHA:-false}
+    FEATURE_AI_SUMMARY: ${FEATURE_AI_SUMMARY:-false}
+    FEATURE_OCR: ${FEATURE_OCR:-false}
+    FEATURE_RED_FLAGS: ${FEATURE_RED_FLAGS:-false}
+    FEATURE_VOICE_INTAKE: ${FEATURE_VOICE_INTAKE:-false}
+  healthcheck:
+    # Readiness, not liveness: a node whose database is unreachable should leave the
+    # rotation rather than keep accepting kiosk traffic it cannot serve.
+    test:
+      [
+        'CMD',
+        'node',
+        '-e',
+        "fetch('http://localhost:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+      ]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
+  deploy:
+    resources:
+      limits:
+        memory: 1g
+
+services:
+  # Two nodes, so a restart or a crash does not take the OPD offline mid-clinic. They are
+  # identical and stateless; anything either of them needs to remember is in Postgres.
+  core_api_a:
+    <<: *core-api
+    container_name: medikiosk-core-api-a
+
+  core_api_b:
+    <<: *core-api
+    container_name: medikiosk-core-api-b
+
+  # TLS termination and load balancing. Configuration is mounted rather than baked, so a
+  # certificate renewal does not need a new image.
+  proxy:
+    image: ${PROXY_IMAGE:-nginx:1.27-alpine}
+    restart: always
+    depends_on:
+      - core_api_a
+      - core_api_b
+    ports:
+      - '443:443'
+    volumes:
+      - ${PROXY_CONF:?path to nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ${TLS_CERT_DIR:?path to certificates}:/etc/nginx/certs:ro
+    security_opt:
+      - no-new-privileges:true
+
+  # Scrapes /v1/metrics from both nodes and evaluates the alert rules in this directory.
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    restart: always
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - ${OPS_API_KEY_FILE:?path to a file containing the ops key}:/etc/prometheus/ops-api-key:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      # Long enough to see a week-over-week pattern in a clinic's rhythms.
+      - '--storage.tsdb.retention.time=90d'
+
+volumes:
+  prometheus_data:

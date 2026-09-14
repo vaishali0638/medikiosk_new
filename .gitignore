@@ -18,6 +18,12 @@ coverage/
 # env — never commit real secrets, only *.example files
 .env
 .env.*
+# ...except the templates, which are deliverable 12 and contain no secrets. Narrow
+# exceptions rather than loosening the rule: a stray `.env.production` must still be
+# ignored, and it will be.
+!.env.example
+!*.env.example
+!.env.production.example
 !.env.example
 !*.env.example
 
