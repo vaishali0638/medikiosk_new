@@ -43,6 +43,14 @@ abstract interface class AudioGuidance {
 
   /// Whether this language can be spoken at all.
   Future<bool> isLanguageSupported(String languageTag);
+
+  /// Which of [languageTags] this device can actually speak.
+  ///
+  /// Asked once at startup and reported to the server, so that a hospital's claim that a
+  /// language has audio is checked against the devices expected to deliver it. A kiosk
+  /// imaged with only the English voice will answer `['en']` however many languages the
+  /// config table lists, and the operations dashboard says so before a patient finds out.
+  Future<List<String>> supportedLanguages(List<String> languageTags);
 }
 
 /// Platform-channel implementation backed by the Android TTS engine.
@@ -104,6 +112,21 @@ class PlatformAudioGuidance implements AudioGuidance {
       return false;
     }
   }
+
+  @override
+  Future<List<String>> supportedLanguages(List<String> languageTags) async {
+    try {
+      final List<Object?>? supported =
+          await _channel.invokeMethod<List<Object?>>('supportedLanguages', <String, Object?>{
+        'languages': languageTags,
+      });
+      return supported?.whereType<String>().toList(growable: false) ?? const <String>[];
+    } on PlatformException {
+      return const <String>[];
+    } on MissingPluginException {
+      return const <String>[];
+    }
+  }
 }
 
 /// Silent implementation for tests and for builds with no TTS engine.
@@ -131,4 +154,7 @@ class SilentAudioGuidance implements AudioGuidance {
 
   @override
   Future<bool> isLanguageSupported(String languageTag) async => false;
+
+  @override
+  Future<List<String>> supportedLanguages(List<String> languageTags) async => const <String>[];
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config/kiosk_config.dart';
+import '../l10n/indian_languages.dart';
 import '../l10n/kiosk_strings.dart';
 import '../theme/accessibility_settings.dart';
 import '../theme/design_tokens.dart';
@@ -70,9 +71,9 @@ class LanguageScreen extends StatelessWidget {
                 SizedBox(
                   width: 280,
                   child: MkButton(
-                    label: language.label,
+                    label: _labelFor(language),
                     selected: language.tag == selectedTag,
-                    semanticLabel: '${language.label} (${language.tag})',
+                    semanticLabel: _semanticLabelFor(language),
                     onPressed: () => onSelect(language.tag),
                   ),
                 ),
@@ -106,6 +107,30 @@ class LanguageScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// What the button says.
+  ///
+  /// The endonym comes from the canonical registry, not from the server payload. A
+  /// hospital administrator typing language labels into a config table will sooner or
+  /// later type "Odia" in Latin script, and a patient who reads only Odia cannot find
+  /// their language in a list written in an alphabet they do not read. The registry knows
+  /// the name is ଓଡ଼ିଆ and that is not a per-hospital decision.
+  ///
+  /// Scripts with no font on a stock Android device — Meetei Mayek, Ol Chiki — get the
+  /// English name appended, so that a kiosk which has not had the font installed shows
+  /// "▯▯▯▯ (Manipuri)" rather than a row of empty boxes with nothing to identify it.
+  static String _labelFor(LanguageOption option) {
+    final IndianLanguage? known = findLanguage(option.tag);
+    if (known == null) return option.label;
+    return known.needsBundledFont ? '${known.endonym} (${known.englishName})' : known.endonym;
+  }
+
+  /// Screen readers and staff get the English name and the tag; patients get the endonym.
+  static String _semanticLabelFor(LanguageOption option) {
+    final IndianLanguage? known = findLanguage(option.tag);
+    if (known == null) return '${option.label} (${option.tag})';
+    return '${known.endonym}, ${known.englishName} (${known.tag})';
   }
 }
 

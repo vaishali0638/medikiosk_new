@@ -1,0 +1,90 @@
+{
+  "_comment": [
+    "Who has checked each shell translation, and when.",
+    "",
+    "'baseline' is the English source the other files are translated from.",
+    "'unreviewed' means the strings were supplied by a developer or a machine and are",
+    "correct to the best of the author's knowledge, but no speaker of the language has",
+    "read them. 'reviewed' requires a named person and a date — a translation cannot",
+    "review itself, and a tick box with no name behind it is how unchecked wording ends",
+    "up in front of a patient.",
+    "",
+    "This governs SHELL text only: buttons, titles, timeouts, error wording. Clinical",
+    "content — consent notices, questions, answer options, red-flag wording — is not here.",
+    "It lives in the governance registry, needs a qualified practitioner's approval per",
+    "language, and is gated by hospital_language.clinically_reviewed. A language can have",
+    "a fully reviewed shell and still be unofferable because no notice is published in it."
+  ],
+  "languages": {
+    "as": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "bn": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "en": {
+      "status": "baseline",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "gu": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "hi": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "kn": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "ml": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "mr": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "ne": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "or": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "pa": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "ta": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "te": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    "ur": {
+      "status": "unreviewed",
+      "reviewer": null,
+      "reviewedAt": null
+    }
+  }
+}

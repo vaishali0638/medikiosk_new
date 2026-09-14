@@ -29,6 +29,8 @@ class MainActivity : FlutterActivity() {
         const val CHANNEL = "org.medikiosk/kiosk_lock"
     }
 
+    private var audioGuidance: AudioGuidanceHandler? = null
+
     private val devicePolicyManager: DevicePolicyManager
         get() = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
 
@@ -42,6 +44,14 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Spoken guidance. Registered here because the Dart side has expected this channel
+        // since Phase 3 and nothing answered it, which made Audio Guidance a button that
+        // did nothing on every device the app has ever run on.
+        audioGuidance = AudioGuidanceHandler(this).also { handler ->
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AudioGuidanceHandler.CHANNEL)
+                .setMethodCallHandler(handler)
+        }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler {
             call, result ->
@@ -115,5 +125,16 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Required while targeting API levels below 33")
     override fun onBackPressed() {
         // Intentionally does nothing.
+    }
+
+    /**
+     * The TTS engine holds a system service connection. Left open it survives the activity,
+     * and on a kiosk that restarts into the same app all day that is a slow leak — and,
+     * worse, audio from a previous patient's session that can still be resumed.
+     */
+    override fun onDestroy() {
+        audioGuidance?.dispose()
+        audioGuidance = null
+        super.onDestroy()
     }
 }

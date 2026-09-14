@@ -79,6 +79,20 @@ export interface HospitalLanguageTable {
   version: RowVersion;
 }
 
+/**
+ * The languages the platform knows, seeded by migration 0024 from
+ * `packages/terminology/src/languages.ts`. Reference data: rows are never written at
+ * runtime, and `hospital_language.language_tag` is a foreign key into it.
+ */
+export interface LanguageTable {
+  tag: string;
+  endonym: string;
+  english_name: string;
+  script: string;
+  direction: string;
+  eighth_schedule: boolean;
+}
+
 export interface KioskDeviceTable {
   id: Generated<string>;
   branch_id: string;
@@ -558,6 +572,7 @@ export interface Database {
   branch: BranchTable;
   department: DepartmentTable;
   hospital_language: HospitalLanguageTable;
+  language: LanguageTable;
   kiosk_device: KioskDeviceTable;
   governance_version: GovernanceVersionTable;
   governance_transition: GovernanceTransitionTable;

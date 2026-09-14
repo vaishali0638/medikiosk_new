@@ -141,4 +141,80 @@ void main() {
       expect(find.text(forbidden), findsNothing);
     }
   });
+
+  testWidgets('shows the registry endonym, not whatever the server sent',
+      (WidgetTester tester) async {
+    // A hospital administrator will eventually type "Odia" in Latin script into the
+    // config table. A patient who reads only Odia cannot find that. The endonym is not a
+    // per-hospital decision, so the kiosk takes it from the canonical registry.
+    await pump(
+      tester,
+      languages: const <LanguageOption>[
+        LanguageOption(
+          tag: 'or',
+          label: 'Odia',
+          clinicallyReviewed: true,
+          audioAvailable: false,
+        ),
+      ],
+    );
+
+    expect(find.text('ଓଡ଼ିଆ'), findsOneWidget);
+    expect(find.text('Odia'), findsNothing);
+  });
+
+  testWidgets('names a language whose script the device may not have a font for',
+      (WidgetTester tester) async {
+    // Meetei Mayek is absent from the stock Android font set. Without the English name
+    // beside it, an unprovisioned kiosk shows a button of empty boxes and a patient has no
+    // way to tell which language it is.
+    await pump(
+      tester,
+      languages: const <LanguageOption>[
+        LanguageOption(
+          tag: 'mni',
+          label: 'Manipuri',
+          clinicallyReviewed: true,
+          audioAvailable: false,
+        ),
+      ],
+    );
+
+    expect(find.textContaining('(Manipuri)'), findsOneWidget);
+  });
+
+  testWidgets('keeps the English name available to a screen reader',
+      (WidgetTester tester) async {
+    await pump(
+      tester,
+      languages: const <LanguageOption>[
+        LanguageOption(
+          tag: 'ta',
+          label: 'தமிழ்',
+          clinicallyReviewed: true,
+          audioAvailable: false,
+        ),
+      ],
+    );
+
+    final MkButton tamil = tester.widget<MkButton>(find.widgetWithText(MkButton, 'தமிழ்'));
+    expect(tamil.semanticLabel, 'தமிழ், Tamil (ta)');
+  });
+
+  testWidgets('falls back to the server label for a tag the registry does not know',
+      (WidgetTester tester) async {
+    await pump(
+      tester,
+      languages: const <LanguageOption>[
+        LanguageOption(
+          tag: 'xx',
+          label: 'Elvish',
+          clinicallyReviewed: true,
+          audioAvailable: false,
+        ),
+      ],
+    );
+
+    expect(find.text('Elvish'), findsOneWidget);
+  });
 }

@@ -1,5 +1,6 @@
 import { sql, type Kysely } from 'kysely';
 import { SQL_ENUMS, type SqlEnumName } from '@medikiosk/api-contracts';
+import { LANGUAGES } from '@medikiosk/terminology';
 import type { Database } from '../src/db/database.types';
 import { createTestDb } from './db-fixture';
 
@@ -93,6 +94,7 @@ describe('schema shape (integration)', () => {
         'integration_outbox',
         'kiosk_device',
         'kiosk_session',
+        'language',
         'legal_hold',
         'ocr_extraction',
         'otp_verification',
@@ -190,5 +192,84 @@ describe('schema shape (integration)', () => {
     `.execute(db);
 
     expect(rows.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+/**
+ * Drift guard between the canonical language registry and the `language` table.
+ *
+ * Migration 0024 seeded the table from `packages/terminology/src/languages.ts`. The two
+ * are now separate copies of the same list, and nothing but this test stops them
+ * diverging — which matters because the kiosk reads the TypeScript copy (through the
+ * generated Dart mirror) to decide what a language is CALLED and which way it READS,
+ * while the database decides which languages a hospital may configure at all. Divergence
+ * shows up as a language a hospital can enable that the kiosk cannot name, or an endonym
+ * that differs between the selection screen and the governance console.
+ */
+describe('language registry parity (integration)', () => {
+  let db: Kysely<Database>;
+  let rows: {
+    tag: string;
+    endonym: string;
+    english_name: string;
+    script: string;
+    direction: string;
+    eighth_schedule: boolean;
+  }[];
+
+  beforeAll(async () => {
+    db = await createTestDb();
+    rows = await db.selectFrom('language').selectAll().orderBy('tag').execute();
+  });
+
+  afterAll(async () => {
+    await db.destroy();
+  });
+
+  it('holds exactly the languages the platform knows', () => {
+    expect(rows.map((r) => r.tag)).toEqual([...LANGUAGES].map((l) => l.tag).sort());
+  });
+
+  it('agrees on every endonym, script and reading direction', () => {
+    const byTag = new Map(rows.map((r) => [r.tag, r]));
+    for (const language of LANGUAGES) {
+      expect({ tag: language.tag, row: byTag.get(language.tag) }).toEqual({
+        tag: language.tag,
+        row: {
+          tag: language.tag,
+          endonym: language.endonym,
+          english_name: language.englishName,
+          script: language.script,
+          direction: language.direction,
+          eighth_schedule: language.eighthSchedule,
+        },
+      });
+    }
+  });
+
+  it('covers all twenty-two Eighth Schedule languages, plus English', () => {
+    // The number is the point of the claim "all Indian regional languages". If a future
+    // edit drops one, this says so rather than leaving the claim quietly false.
+    expect(rows.filter((r) => r.eighth_schedule)).toHaveLength(22);
+    expect(rows.filter((r) => !r.eighth_schedule).map((r) => r.tag)).toEqual(['en']);
+  });
+
+  it('refuses a language tag it does not know', async () => {
+    const hospital = await db
+      .insertInto('hospital')
+      .values({ code: 'LANG-FK', name: 'Language FK Test' })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    // 'tamil' is the shape of mistake the constraint exists for: a plausible, readable,
+    // completely unusable tag that would silently find no notice and no voice.
+    await expect(
+      db
+        .insertInto('hospital_language')
+        .values({ hospital_id: hospital.id, language_tag: 'tamil', label: 'Tamil' })
+        .execute(),
+    ).rejects.toThrow(/hospital_language_tag_known/);
+
+    await db.deleteFrom('hospital').where('id', '=', hospital.id).execute();
   });
 });

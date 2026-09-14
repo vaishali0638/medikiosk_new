@@ -8,6 +8,7 @@ import 'api/documents_api.dart';
 import 'api/api_exception.dart';
 import 'config/consent_notice.dart';
 import 'config/kiosk_config.dart';
+import 'l10n/indian_languages.dart';
 import 'l10n/kiosk_strings.dart';
 import 'platform/audio_guidance.dart';
 import 'platform/qr_scanner.dart';
@@ -123,6 +124,8 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   bool _timeoutDialogOpen = false;
   ConsentNotice? _notice;
   bool _speaking = false;
+  /// The screen and language last read aloud, so a rebuild does not repeat it.
+  String? _lastAnnounced;
   bool _audioUnavailable = false;
   bool _busy = false;
   bool _cameraUnavailable = false;
@@ -186,6 +189,10 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   KioskStrings get _strings => KioskStrings.of(_languageTag);
+
+  /// Reading direction for the language in use, from the canonical registry.
+  TextDirection get _textDirection =>
+      findLanguage(_languageTag)?.direction ?? TextDirection.ltr;
 
   /// The department shown on the token. A mobile-QR arrival is told it by the server; a
   /// walk-in chose it here, and there is no arrival response to read it from.
@@ -1171,6 +1178,109 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     }
   }
 
+  /// Reads the current screen's heading aloud when Audio Guidance is on.
+  ///
+  /// Before this, the Audio Guidance button set a flag and nothing else: the only screen
+  /// that ever spoke was the consent notice, behind its own "Listen" control. A patient
+  /// who cannot read turned on a feature named Audio Guidance and got silence for the
+  /// whole journey.
+  ///
+  /// What is spoken is SHELL text — the screen title and its instruction. Clinical
+  /// content is not read from here: the consent notice has its own control, which labels
+  /// device speech as synthetic rather than passing it off as the approved recording, and
+  /// questionnaire wording is governed content that a reviewer has to approve per
+  /// language before it is spoken at all.
+  void _announceScreen() {
+    if (!_a11y.audioGuidance) return;
+
+    final String key = '${_view.name}/$_languageTag';
+    if (key == _lastAnnounced) return;
+    _lastAnnounced = key;
+
+    final String? text = _headingFor(_view);
+    if (text == null) return;
+
+    // Fire and forget is right here and only here: nothing downstream depends on the
+    // result, the engine flushes the previous utterance itself, and a patient must never
+    // wait on a screen for a voice to finish.
+    unawaited(widget.audio.speak(text: text, languageTag: _languageTag));
+  }
+
+  /// The shell heading for a screen, in the patient's language.
+  ///
+  /// Returns null for screens whose entire content is a value rather than a sentence —
+  /// reading "Question" aloud with no question is worse than saying nothing.
+  String? _headingFor(ShellView view) {
+    switch (view) {
+      case ShellView.startup:
+        return _strings['startup.title'];
+      case ShellView.home:
+        return '${_strings['app.title']}. ${_strings['app.tagline']}. '
+            '${_strings['home.touchToBegin']}';
+      case ShellView.language:
+        return _strings['language.title'];
+      case ShellView.consent:
+      case ShellView.consentFullNotice:
+        // The notice itself is spoken only through its own labelled control.
+        return _strings['consent.listen'];
+      case ShellView.consentDeclined:
+        return _strings['consent.declined.title'];
+      case ShellView.consentUnavailable:
+        return _strings['consent.unavailable.title'];
+      case ShellView.scanQr:
+        return '${_strings['arrival.scan.title']}. ${_strings['arrival.scan.subtitle']}';
+      case ShellView.confirmVisit:
+        return _strings['arrival.confirm.title'];
+      case ShellView.changedSince:
+        return _strings['arrival.changed.title'];
+      case ShellView.qrRejected:
+        return '${_strings['arrival.rejected.title']}. ${_strings['arrival.rejected.body']}';
+      case ShellView.identityMethod:
+        return _strings['identity.existingPatient.title'];
+      case ShellView.identityMobile:
+        return '${_strings['identity.mobile.title']}. ${_strings['identity.mobile.subtitle']}';
+      case ShellView.identityOtp:
+        return _strings['identity.otp.title'];
+      case ShellView.identityUhid:
+        return '${_strings['identity.uhid.title']}. ${_strings['identity.uhid.subtitle']}';
+      case ShellView.identityConfirm:
+        return _strings['identity.confirm.title'];
+      case ShellView.identityNotConfirmed:
+      case ShellView.identityCounterOnly:
+        return '${_strings['identity.notConfirmed.title']}. '
+            '${_strings['identity.notConfirmed.body']}';
+      case ShellView.demographics:
+        return _strings['demographics.title'];
+      case ShellView.department:
+        return '${_strings['department.title']}. ${_strings['department.subtitle']}';
+      case ShellView.ayush:
+        return '${_strings['ayush.title']}. ${_strings['ayush.subtitle']}';
+      case ShellView.addDocuments:
+        return '${_strings['documents.title']}. ${_strings['documents.subtitle']}';
+      case ShellView.documentType:
+        return _strings['documents.whatIsThis'];
+      case ShellView.imageQuality:
+        return _strings['documents.qualityTitle'];
+      case ShellView.review:
+        return '${_strings['review.title']}. ${_strings['review.subtitle']}';
+      case ShellView.token:
+        return _strings['token.title'];
+      case ShellView.tokenPending:
+        return '${_strings['token.pending.title']}. ${_strings['token.pending.body']}';
+      case ShellView.expired:
+        return '${_strings['expired.title']}. ${_strings['expired.body']}';
+      case ShellView.error:
+        return '${_strings['error.title']}. ${_strings['error.body']}';
+      case ShellView.offline:
+        return '${_strings['offline.title']}. ${_strings['offline.body']}';
+      case ShellView.question:
+      case ShellView.ocrStatus:
+        // Content-only screens: the question text is governed content and is not read by
+        // the shell, and OCR status is a progress indicator with nothing to announce.
+        return null;
+    }
+  }
+
   void _handleApiFailure(ApiException error) {
     if (!mounted) return;
     setState(() {
@@ -1181,6 +1291,9 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // After the frame, not during it: speaking is a side effect and build must stay pure.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _announceScreen());
+
     return AccessibilityScope(
       settings: _a11y,
       child: MaterialApp(
@@ -1188,6 +1301,14 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         navigatorKey: _navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: MkTheme.build(highContrast: _a11y.highContrast, textScale: _a11y.textScale),
+        // Urdu, Kashmiri and Sindhi read right to left, and that is a LAYOUT property, not
+        // just a text one. Without this the words render correctly and everything around
+        // them — the primary action, the back control, the order of a row of options —
+        // stays mirrored the wrong way, which is harder to use than plain English would be.
+        builder: (BuildContext context, Widget? child) => Directionality(
+          textDirection: _textDirection,
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: _ActivityDetector(
           onActivity: () => _sessions?.recordActivity(),
           child: Stack(

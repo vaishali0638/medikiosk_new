@@ -2,7 +2,7 @@
   "name": "medikiosk",
   "private": true,
   "version": "0.1.0",
-  "description": "MediKiosk — patient-intake kiosk platform for Indian hospital OPDs",
+  "description": "MediKiosk \u2014 patient-intake kiosk platform for Indian hospital OPDs",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=22"
@@ -31,7 +31,8 @@
     "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f infra/docker/docker-compose.yml down",
     "docker:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run scan:forbidden && npm test"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run scan:forbidden && npm test",
+    "lang:coverage": "npm run lang:coverage -w @medikiosk/tools"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

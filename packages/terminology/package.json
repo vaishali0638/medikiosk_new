@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && tsx scripts/generate-dart-languages.ts && tsx scripts/generate-kiosk-strings.ts",
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "vitest run --passWithNoTests"
   }

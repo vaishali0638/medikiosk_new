@@ -15,7 +15,6 @@ import 'package:medikiosk_kiosk/screens/review_screen.dart';
 import 'package:medikiosk_kiosk/screens/status_screens.dart';
 import 'package:medikiosk_kiosk/config/kiosk_config.dart';
 import 'package:medikiosk_kiosk/screens/language_screen.dart';
-import 'package:medikiosk_kiosk/screens/token_screen.dart';
 
 import 'support/widget_host.dart';
 
@@ -35,12 +34,12 @@ void main() {
   void noop() {}
   const Widget nothing = SizedBox.shrink();
 
-  final Question question = Question(
+  final Question question = const Question(
     id: 'q1',
     type: 'SINGLE_SELECT',
     prompt: 'What brings you here today?',
-    nonCommittal: const <NonCommittal>[NonCommittal.notSure],
-    options: const <QuestionOption>[QuestionOption(id: 'pain', label: 'Pain')],
+    nonCommittal: <NonCommittal>[NonCommittal.notSure],
+    options: <QuestionOption>[QuestionOption(id: 'pain', label: 'Pain')],
   );
 
   /// Every screen a patient can be looking at mid-journey.

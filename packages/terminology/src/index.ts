@@ -26,3 +26,5 @@ export const DOCTOR_FACING_DRAFT_LABEL =
   'AI-assisted pre-consultation draft — not verified' as const;
 
 export * from './draft-safety';
+
+export * from './languages';
