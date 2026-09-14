@@ -158,3 +158,35 @@ key from `hospital_language`. `test/schema-parity.int-spec.ts` fails if the tabl
   fake that records what would be spoken. Nobody has run it on a device with an Indian
   voice installed, so which of the fourteen a real kiosk can actually pronounce is
   unmeasured. `docs/runbooks/kiosk-device-setup.md` is where installing the voices belongs.
+
+- **The dev seed publishes placeholder consent notices in all fourteen languages**, so the
+  selection screen can be exercised end to end. They are translations OF A PLACEHOLDER: each
+  `fullText` opens with the not-approved warning in English and again in the target language,
+  and the approval record still reads `NOT_A_REAL_APPROVAL`. `clinically_reviewed` is set
+  true by the seed for development only; a hospital sets it after a practitioner approves the
+  content in that language, which is why the flag is separate from the language being
+  configured at all. Sanskrit is seeded configured-but-unreviewed so the gate stays
+  exercised: it is in the config table and must not appear on the kiosk.
+
+## Hearing it during development
+
+macOS has its own handler, `macos/Runner/AudioGuidanceHandler.swift`, over
+`AVSpeechSynthesizer`. It exists because a text-to-speech path nobody can listen to is
+exactly how the Android channel went fifteen phases unimplemented. It holds to the same three
+rules as the Android side — probe the voice before using it, never substitute another
+language, flush the previous utterance — because those are correctness rules, not platform
+details.
+
+Registering it took four entries in `macos/Runner.xcodeproj/project.pbxproj`: `PBXBuildFile`,
+`PBXFileReference`, the Runner group and the Sources build phase. Xcode compiles the files its
+project lists, not the files in the directory. Gradle needs none of that, which is why the
+Android handler worked the moment it was written and this one failed to compile until the
+project knew about it.
+
+On the development Mac this was built on, `AVSpeechSynthesisVoice` resolves for six of the
+fourteen — Bengali (Piya), English (Rishi), Hindi (Lekha), Kannada (Soumya), Tamil (Vani),
+Telugu (Geeta) — and returns nil for the other eight. That is the honest state of a machine
+nobody has provisioned voices on, and it is exactly what an unprovisioned kiosk looks like:
+the eight stay silent rather than being read out in a language the patient did not choose.
+Voices are added on macOS under System Settings → Accessibility → Spoken Content → System
+Voice → Manage Voices, and on Android under Settings → System → Languages → Text-to-speech.
