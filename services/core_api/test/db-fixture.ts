@@ -16,7 +16,13 @@ export interface Fixture {
 
 /** Kysely owns the pool; `db.destroy()` closes it, so tests never end the pool directly. */
 export async function createTestDb(): Promise<Kysely<Database>> {
-  const pool = new Pool({ connectionString: process.env['DATABASE_URL'] as string, max: 8 });
+  const pool = new Pool({
+    connectionString: process.env['DATABASE_URL'] as string,
+    max: 8,
+    // Without this, a suite that exhausts the pool waits for a connection forever and
+    // reports it as a hang with no stack worth reading.
+    connectionTimeoutMillis: 10_000,
+  });
   // Same startup step the application performs, so tests exercise the real read path.
   await registerEnumArrayParsers(pool);
   return new Kysely<Database>({ dialect: new PostgresDialect({ pool }) });
@@ -25,19 +31,74 @@ export async function createTestDb(): Promise<Kysely<Database>> {
 /** Empties every table between tests. TRUNCATE ... CASCADE also clears the audit table,
  *  which the append-only rules permit — they block UPDATE and DELETE, not TRUNCATE. */
 export async function truncateAll(db: Kysely<Database>): Promise<void> {
-  await sql`TRUNCATE TABLE
-      audit_event, integration_outbox, triage_status, ocr_extraction, document,
-      follow_up_delta, questionnaire_response, token_request, qr_nonce,
-      kiosk_session, pre_checkin, encounter, consent, patient_identifier, patient,
-      governance_transition, governance_version, kiosk_device, hospital_language,
-      department, branch, hospital,
-      staff_session, staff_user, break_glass_access, encounter_export,
-      legal_hold, retention_policy,
-      -- Rate-limit windows are state too. Without this, a suite that signs in as the
-      -- same subject in a dozen tests exhausts the bucket partway through and the rest
-      -- fail with 429 — which is the limiter working, on the wrong thing.
-      rate_limit_bucket
-    RESTART IDENTITY CASCADE`.execute(db);
+  try {
+    await db.transaction().execute(async (trx) => {
+      // A TRUNCATE needs ACCESS EXCLUSIVE on every table listed, and Postgres will wait
+      // for it indefinitely by default. That default turned one stray uncommitted write
+      // into a ten-minute silent hang in a random suite, which cost far more to diagnose
+      // than the failure it was hiding. Ten seconds is longer than any legitimate holder
+      // of these locks between tests, so anything that trips this is a real defect and
+      // should say so immediately.
+      await sql`SET LOCAL lock_timeout = '10s'`.execute(trx);
+      await sql`TRUNCATE TABLE
+          audit_event, integration_outbox, triage_status, ocr_extraction, document,
+          follow_up_delta, questionnaire_response, token_request, qr_nonce,
+          kiosk_session, pre_checkin, encounter, consent, patient_identifier, patient,
+          governance_transition, governance_version, device_event, kiosk_device,
+          hospital_language, department, branch, hospital,
+          staff_session, staff_user, break_glass_access, encounter_export,
+          legal_hold, retention_policy,
+          -- Rate-limit windows are state too. Without this, a suite that signs in as the
+          -- same subject in a dozen tests exhausts the bucket partway through and the rest
+          -- fail with 429 — which is the limiter working, on the wrong thing.
+          rate_limit_bucket
+        RESTART IDENTITY CASCADE`.execute(trx);
+    });
+  } catch (error) {
+    if (!isLockTimeout(error)) throw error;
+    throw new Error(`truncateAll could not lock the schema.\n${await describeBlockers(db)}`);
+  }
+}
+
+/** Postgres raises `lock_not_available` when `lock_timeout` elapses. */
+function isLockTimeout(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && (error as { code?: string }).code === '55P03'
+  );
+}
+
+/**
+ * Names whoever is holding the locks, so the next person sees the cause rather than
+ * repeating the investigation. Best-effort: if this query itself fails, the lock timeout
+ * is still reported.
+ */
+async function describeBlockers(db: Kysely<Database>): Promise<string> {
+  try {
+    const { rows } = await sql<{
+      pid: number;
+      state: string | null;
+      wait_event_type: string | null;
+      seconds: number | null;
+      query: string | null;
+    }>`SELECT pid, state, wait_event_type,
+              round(extract(epoch FROM (now() - state_change)))::int AS seconds,
+              left(query, 200) AS query
+         FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND pid <> pg_backend_pid()
+        ORDER BY state_change`.execute(db);
+
+    if (rows.length === 0)
+      return 'No other sessions are connected — suspect a lock this pool holds itself.';
+    return rows
+      .map(
+        (r) =>
+          `  pid ${r.pid} ${r.state ?? 'unknown'} for ${r.seconds ?? '?'}s [${r.wait_event_type ?? 'running'}]: ${r.query ?? ''}`,
+      )
+      .join('\n');
+  } catch {
+    return '(could not read pg_stat_activity)';
+  }
 }
 
 /**

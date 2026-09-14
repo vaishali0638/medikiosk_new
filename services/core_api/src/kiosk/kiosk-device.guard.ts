@@ -71,12 +71,28 @@ export class KioskDeviceGuard implements CanActivate {
       hospitalId: device.hospitalId,
     };
 
-    // Liveness for the operations dashboard. Best-effort: a failure here must not stop
-    // a patient from checking in.
-    void this.db
+    // Liveness for the operations dashboard. Best-effort in the sense that a failure must
+    // not stop a patient from checking in — but awaited, not fired and forgotten.
+    //
+    // It used to be `void`-ed. That left an uncommitted UPDATE holding a row lock on
+    // kiosk_device after the response had already gone out, racing whatever ran next. In
+    // the integration suite "whatever ran next" is a TRUNCATE, which needs ACCESS
+    // EXCLUSIVE on the same table and, with lock_timeout at its default of 0, waits for
+    // it forever. In an OPD it would be the next patient's request queueing behind a write
+    // nobody is waiting for. An unawaited write is not free just because no one reads it.
+    //
+    // The throttle is what makes awaiting cheap: past the first request in a minute the
+    // WHERE matches nothing, so the statement takes no row lock at all.
+    await this.db
       .updateTable('kiosk_device')
       .set({ last_seen_at: sql<Date>`now()` })
       .where('id', '=', device.deviceId)
+      .where((eb) =>
+        eb.or([
+          eb('last_seen_at', 'is', null),
+          eb('last_seen_at', '<', sql<Date>`now() - interval '60 seconds'`),
+        ]),
+      )
       .execute()
       .catch(() => undefined);
 

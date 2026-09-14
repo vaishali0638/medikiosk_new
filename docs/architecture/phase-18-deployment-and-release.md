@@ -93,18 +93,42 @@ written _with_ a hospital than for one.
 
 Full suites: **158 backend unit, 243 Flutter, 17 tools**, `verify` clean.
 
-**The integration suite is not reported as green, because it was not.** Across three full
-runs, one suite hung each time — a different one each run — for around 600 seconds, always
-inside `truncateAll` in a `beforeEach`. Every suite passes in isolation, and 411 of 412
-tests pass in each full run.
+**The integration suite is green: 22 suites, 412 tests, ~43 seconds.**
 
-`TRUNCATE ... CASCADE` blocking means another session holds a lock on one of those tables,
-and the only sessions in a `--runInBand` run are the previous suite's pools. The likeliest
-explanation is a connection released later than the next suite's setup expects, which would
-make this a test-harness fault rather than a product one — but that is a hypothesis, not a
-finding, and it is written here rather than smoothed over. It should be root-caused before
-anyone relies on this suite as a release gate, which `docs/runbooks/release-process.md`
-says it is.
+It was not, when this phase was first written. Across three full runs one suite hung each
+time — a different one each run — for around 600 seconds, always inside `truncateAll` in a
+`beforeEach`, while every suite passed in isolation. That was recorded here as an open
+defect rather than smoothed over, and it has since been root-caused.
+
+The cause was in the product, not the harness. `KioskDeviceGuard` refreshed
+`kiosk_device.last_seen_at` on every kiosk request and did not await it:
+
+```ts
+void this.db.updateTable('kiosk_device').set({ last_seen_at: sql`now()` })...
+```
+
+The response therefore returned while an uncommitted `UPDATE` still held a row lock on
+`kiosk_device`. In the test suite the next thing to run is `TRUNCATE ... CASCADE`, which
+needs `ACCESS EXCLUSIVE` on that same table; Postgres's `lock_timeout` defaults to `0`, so
+it waited for the straggler indefinitely. Which suite lost the race depended on timing,
+which is exactly why it moved around and why no suite reproduced it alone.
+
+Two changes, one for the cause and one for the class of problem:
+
+- The liveness write is now awaited, so it cannot outlive its request. It is also throttled
+  to at most once per minute per device (`WHERE last_seen_at IS NULL OR last_seen_at <
+now() - interval '60 seconds'`), so awaiting it costs nothing on the common path — past
+  the first request in a minute the statement matches no rows and takes no row lock. The
+  behaviour the operations dashboard depends on is unchanged: the offline threshold is
+  measured in minutes, not seconds.
+- `truncateAll` now runs under `SET LOCAL lock_timeout = '10s'` and, on timeout, reports
+  the contents of `pg_stat_activity` in the failure message. A future regression of this
+  shape fails in ten seconds naming the blocking session, instead of hanging for ten
+  minutes naming nothing.
+
+The general lesson is worth keeping: an unawaited write is not free just because nobody
+reads the result. In a test run it corrupts the next test's setup; in an OPD it puts the
+next patient's request behind a write no one is waiting for.
 
 ## Known limitations
 
