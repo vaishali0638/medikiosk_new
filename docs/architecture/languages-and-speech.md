@@ -154,7 +154,7 @@ key from `hospital_language`. `test/schema-parity.int-spec.ts` fails if the tabl
 - **Voice availability is asked for but not yet reported to the server**, so
   `hospital_language.audio_available` remains a hospital's claim rather than a measurement.
 - **The Android TTS path has not been heard.** The Kotlin compiles — `flutter build apk
-  --debug` succeeds with the handler registered — and the Dart side is tested against a
+--debug` succeeds with the handler registered — and the Dart side is tested against a
   fake that records what would be spoken. Nobody has run it on a device with an Indian
   voice installed, so which of the fourteen a real kiosk can actually pronounce is
   unmeasured. `docs/runbooks/kiosk-device-setup.md` is where installing the voices belongs.

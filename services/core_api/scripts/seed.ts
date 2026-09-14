@@ -9,10 +9,62 @@
  * Refuses to run against production. Idempotent, so re-seeding is safe.
  */
 import { readFileSync } from 'node:fs';
+import { findLanguage } from '@medikiosk/terminology';
 import { resolve } from 'node:path';
 import { Pool } from 'pg';
 import { Kysely, PostgresDialect } from 'kysely';
 import type { Database } from '../src/db/database.types';
+
+/**
+ * Languages this seed makes offerable: a complete shell translation AND a consent notice
+ * to publish. Both are placeholders; the notice says so in its own first line and the
+ * approval record reads NOT_A_REAL_APPROVAL.
+ */
+/**
+ * Whether this content key already has something PUBLISHED for this hospital.
+ *
+ * Migration 0020 added `governance_version_one_published`: one live version per content
+ * key, which is the constraint that makes "which questionnaire did this patient answer?"
+ * answerable. The seed's ON CONFLICT is keyed on the semver, so re-seeding a database that
+ * was seeded under an OLDER version number inserts a second PUBLISHED row and trips it.
+ *
+ * Skipping is the right behaviour rather than replacing: a published version is governed
+ * content, and a seed script must never quietly retire one. If the placeholder needs
+ * replacing, that happens through the governance console with a recorded transition.
+ */
+async function alreadyPublished(
+  trx: Kysely<Database>,
+  hospitalId: string,
+  contentKind: 'CONSENT_NOTICE' | 'QUESTIONNAIRE',
+  contentKey: string,
+): Promise<boolean> {
+  const existing = await trx
+    .selectFrom('governance_version')
+    .select('id')
+    .where('hospital_id', '=', hospitalId)
+    .where('content_kind', '=', contentKind)
+    .where('content_key', '=', contentKey)
+    .where('state', 'in', ['PUBLISHED', 'CANARY'])
+    .executeTakeFirst();
+  return existing !== undefined;
+}
+
+const OFFERED_LANGUAGES = [
+  'en',
+  'hi',
+  'as',
+  'bn',
+  'gu',
+  'kn',
+  'ml',
+  'mr',
+  'ne',
+  'or',
+  'pa',
+  'ta',
+  'te',
+  'ur',
+] as const;
 
 const HOSPITAL_CODE = 'HOSP-001';
 
@@ -65,12 +117,32 @@ async function main(): Promise<void> {
           .execute();
       }
 
-      // Only clinically reviewed languages are offered to patients. Tamil is seeded as
-      // configured-but-unreviewed so the kiosk's review gate is exercised locally.
+      // Every language whose shell strings are complete AND which has a placeholder consent
+      // notice to publish. The kiosk shows a language only when both hold, so this list and
+      // NOTICE_LANGUAGES below have to agree — hence one constant driving both.
+      //
+      // `clinically_reviewed` is true here because these are DEVELOPMENT seeds against
+      // placeholder notices that say so in their own first line. A real hospital sets this
+      // flag only after a practitioner has approved the content in that language, which is
+      // why the flag exists separately from the language being configured at all.
+      //
+      // Sanskrit is seeded as configured-but-unreviewed, so the kiosk's review gate is still
+      // exercised locally: it must appear in the config table and NOT on the kiosk.
       const languages = [
-        { language_tag: 'en', label: 'English', clinically_reviewed: true, audio_available: true },
-        { language_tag: 'hi', label: 'हिन्दी', clinically_reviewed: true, audio_available: true },
-        { language_tag: 'ta', label: 'தமிழ்', clinically_reviewed: false, audio_available: false },
+        ...OFFERED_LANGUAGES.map((language_tag) => ({
+          language_tag,
+          // The label is a fallback only. The kiosk takes the endonym from the canonical
+          // registry, so a hospital cannot mislabel a language for its patients.
+          label: findLanguage(language_tag)?.endonym ?? language_tag,
+          clinically_reviewed: true,
+          audio_available: false,
+        })),
+        {
+          language_tag: 'sa',
+          label: findLanguage('sa')?.endonym ?? 'sa',
+          clinically_reviewed: false,
+          audio_available: false,
+        },
       ];
       for (const lang of languages) {
         await trx
@@ -110,7 +182,7 @@ async function main(): Promise<void> {
       // Only English: publishing an unreviewed translation of clinical questions would be
       // worse than offering none, so Hindi intake is unavailable until it is translated
       // and reviewed.
-      {
+      if (!(await alreadyPublished(trx, hospital.id, 'QUESTIONNAIRE', 'common-core/en'))) {
         const payload: unknown = JSON.parse(
           readFileSync(
             resolve(__dirname, '../../../infra/seed-content/questionnaire.common-core.en.json'),
@@ -145,7 +217,10 @@ async function main(): Promise<void> {
           .execute();
       }
 
-      for (const language of ['en', 'hi']) {
+      for (const language of OFFERED_LANGUAGES) {
+        const contentKey = `consent-notice/${language}`;
+        if (await alreadyPublished(trx, hospital.id, 'CONSENT_NOTICE', contentKey)) continue;
+
         const payload: unknown = JSON.parse(
           readFileSync(
             resolve(__dirname, `../../../infra/seed-content/consent-notice.${language}.json`),
@@ -158,7 +233,7 @@ async function main(): Promise<void> {
           .values({
             hospital_id: hospital.id,
             content_kind: 'CONSENT_NOTICE',
-            content_key: `consent-notice/${language}`,
+            content_key: contentKey,
             semver: '1.0.0',
             state: 'PUBLISHED',
             published_by_user_id: 'SEED',
@@ -178,8 +253,9 @@ async function main(): Promise<void> {
     });
 
     process.stdout.write(
-      `seeded ${HOSPITAL_CODE}: 1 branch, 3 departments, 3 languages, 3 kiosks, ` +
-        '2 placeholder consent notices, 1 placeholder questionnaire\n',
+      `seeded ${HOSPITAL_CODE}: 1 branch, 3 departments, ${OFFERED_LANGUAGES.length + 1} languages ` +
+        `(${OFFERED_LANGUAGES.length} offerable, 1 unreviewed), 3 kiosks, ` +
+        `${OFFERED_LANGUAGES.length} placeholder consent notices, 1 placeholder questionnaire\n`,
     );
   } finally {
     await db.destroy();

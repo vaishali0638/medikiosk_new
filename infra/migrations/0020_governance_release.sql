@@ -17,6 +17,25 @@ ALTER TABLE governance_version ADD CONSTRAINT governance_version_publication_is_
   OR (published_by_user_id IS NOT NULL AND published_at IS NOT NULL)
 );
 
+-- Content published BEFORE this migration has no recorded publisher, because until now
+-- nothing captured one. Three ways out, and only one of them is honest:
+--
+--   - Fail the migration. Then the constraint can never be applied to a database anybody
+--     has actually used, which is every database that matters.
+--   - Move those rows out of PUBLISHED. That unpublishes a hospital's live consent notice
+--     during an upgrade — the patient-facing failure this whole phase exists to prevent.
+--   - Record what is true: it was published before the system recorded publishers.
+--
+-- The marker is deliberately not a person's name and not a plausible user id, for the same
+-- reason the seed writes NOT_A_REAL_APPROVAL: an attribution nobody can be asked about must
+-- not read like one that can. `published_at` takes the row's creation time rather than now(),
+-- so the timeline stays true.
+UPDATE governance_version
+   SET published_by_user_id = 'PRE-ATTRIBUTION-MIGRATION',
+       published_at = COALESCE(published_at, created_at)
+ WHERE state IN ('PUBLISHED', 'CANARY')
+   AND published_by_user_id IS NULL;
+
 -- Nothing may be live without a publisher. The states below PUBLISHED are working states
 -- and carry no attribution; PUBLISHED and CANARY are in front of patients and must.
 ALTER TABLE governance_version ADD CONSTRAINT governance_version_live_is_published CHECK (

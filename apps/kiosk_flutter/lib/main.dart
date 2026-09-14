@@ -44,7 +44,13 @@ void main() {
       // Only Android provides real lock-down. A desktop or iOS debug build used for
       // design review reports itself as unlocked rather than pretending otherwise.
       kioskLock: Platform.isAndroid ? const AndroidKioskLock() : const UnlockedKioskLock(),
-      audio: Platform.isAndroid ? const PlatformAudioGuidance() : SilentAudioGuidance(),
+      // Speech is real on Android (the kiosk) and on macOS (where it is developed). Both
+      // answer the same channel and both report a language as unsupported when no voice is
+      // installed, rather than substituting one — so what a developer hears is what a
+      // patient would. Everywhere else stays silent and says so.
+      audio: Platform.isAndroid || Platform.isMacOS
+          ? const PlatformAudioGuidance()
+          : SilentAudioGuidance(),
       scanner:
           Platform.isAndroid ? const PlatformQrScanner() : const UnavailableQrScanner(),
       printer: Platform.isAndroid
