@@ -1,7 +1,11 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import { NON_COMMITTAL_ANSWERS } from '@medikiosk/questionnaire-schema';
+import {
+  NON_COMMITTAL_ANSWERS,
+  type AnswerLookup,
+  type Questionnaire,
+} from '@medikiosk/questionnaire-schema';
 import { DomainError } from '../common/domain-error';
 import { UuidParamPipe } from '../common/uuid-param.pipe';
 import { KioskDeviceGuard, type KioskRequest } from '../kiosk/kiosk-device.guard';
@@ -9,6 +13,7 @@ import { ConsentService } from '../consent/consent.service';
 import { AnswerRepository } from './answer.repository';
 import { QuestionnaireService } from './questionnaire.service';
 import { PreCheckinService } from '../precheckin/precheckin.service';
+import type { PreCheckinRow } from '../db/database.types';
 
 const COMMON_CORE_KEY = 'common-core';
 
@@ -29,6 +34,15 @@ const submitAnswerSchema = z.object({
   modality: z.enum(['TOUCH', 'VOICE', 'TEXT']),
   language: z.string().min(2).max(16),
 });
+
+/** Everything an intake request needs, resolved and consent-checked together. */
+interface LoadedIntake {
+  readonly preCheckin: PreCheckinRow;
+  readonly questionnaire: Questionnaire;
+  /** The AYUSH module composed into the core, or null when the department has none. */
+  readonly moduleUsed: string | null;
+  readonly lookup: AnswerLookup;
+}
 
 @ApiTags('intake')
 @Controller('intakes')
@@ -244,7 +258,11 @@ export class IntakeController {
    * Consent is re-checked on EVERY call, not once at the start of the interview. A patient
    * can withdraw mid-intake, and the next question must not be served after they have.
    */
-  private async load(req: KioskRequest, preCheckinId: string, language?: string) {
+  private async load(
+    req: KioskRequest,
+    preCheckinId: string,
+    language?: string,
+  ): Promise<LoadedIntake> {
     const preCheckin = await this.preCheckins.findById(preCheckinId);
     if (!preCheckin || preCheckin.hospital_id !== req.kiosk.hospitalId) {
       throw new DomainError('VALIDATION_FAILED', req.correlationId, 'unknown pre-check-in');

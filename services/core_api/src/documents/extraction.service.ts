@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'kysely';
 import { DB } from '../db/db.module';
 import type { Db } from '../db/db.provider';
+import type { OcrExtractionRow } from '../db/database.types';
 import { AuditRepository } from '../audit/audit.repository';
 import { DocumentService } from './document.service';
 import { OcrAdapter } from './ocr.adapter';
@@ -167,7 +168,7 @@ export class ExtractionService {
   }
 
   /** What the doctor's view reads. Candidates only — nothing here is a clinical record. */
-  async findForDocument(documentId: string) {
+  async findForDocument(documentId: string): Promise<OcrExtractionRow | undefined> {
     return this.db
       .selectFrom('ocr_extraction')
       .selectAll()
