@@ -22,6 +22,7 @@ import { DocumentService } from '../documents/document.service';
 import { ExtractionService } from '../documents/extraction.service';
 import { SummaryService } from '../summary/summary.service';
 import { FollowUpService } from '../followup/followup.service';
+import { WorklistEventsService } from './worklist-events.service';
 import { DoctorService } from './doctor.service';
 import { DocumentLinkService } from './document-link.service';
 import { EncounterAccessService } from './encounter-access.service';
@@ -50,6 +51,7 @@ export class DoctorController {
     private readonly documents: DocumentService,
     private readonly extractions: ExtractionService,
     private readonly links: DocumentLinkService,
+    private readonly worklistEvents: WorklistEventsService,
     private readonly exports: ExportService,
     private readonly rateLimits: RateLimitService,
   ) {}
@@ -88,6 +90,49 @@ export class DoctorController {
     const header = req.header('authorization') ?? '';
     await this.auth.signOut(header.startsWith('Bearer ') ? header.slice(7).trim() : '');
     return { ended: true };
+  }
+
+  @Get('worklist/stream')
+  @UseGuards(StaffAuthGuard)
+  @ApiOperation({
+    summary:
+      'Server-sent events telling this clinician that their worklist changed. Carries no ' +
+      'patient data: the client re-fetches through the worklist endpoint.',
+  })
+  worklistStream(@Req() req: StaffRequest, @Res() res: Response): void {
+    const staff = req.staff;
+
+    res.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive',
+      // Nginx and most hospital proxies buffer by default, which holds every event until
+      // the buffer fills — indistinguishable, from the console, from nothing happening.
+      'x-accel-buffering': 'no',
+    });
+    res.write(': connected\n\n');
+
+    const unsubscribe = this.worklistEvents.subscribe((change) => {
+      // Scoped to what this clinician may already see. The same two rules as the worklist
+      // query itself, applied here rather than trusted to the notification: a department
+      // doctor must not learn that another department is busy.
+      if (change.hospitalId !== staff.hospitalId) return;
+      if (staff.departmentId !== null && change.departmentId !== staff.departmentId) return;
+
+      // "Something changed", never what. The client re-fetches through the authenticated
+      // endpoint, so there is one place that decides who sees which patient.
+      res.write(`event: worklist\ndata: {"changed":true}\n\n`);
+    });
+
+    // Proxies and load balancers close an idle connection, and the browser's EventSource
+    // then reconnects — noisily, and with a gap. A comment every twenty seconds is enough
+    // to keep it open and costs nothing.
+    const heartbeat = setInterval(() => res.write(': keep-alive\n\n'), 20_000);
+
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      unsubscribe();
+    });
   }
 
   @Get('worklist')

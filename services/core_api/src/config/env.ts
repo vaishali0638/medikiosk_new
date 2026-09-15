@@ -124,7 +124,13 @@ export const envSchema = z.object({
   /** Signs short-lived document links for the doctor dashboard. */
   DOCUMENT_LINK_KEY: z.string().min(32).optional(),
   /** Which staff identity provider to use. Anything else means nobody can sign in. */
-  STAFF_IDP: z.enum(['sandbox', 'none']).default('none'),
+  STAFF_IDP: z.enum(['sandbox', 'supabase', 'none']).default('none'),
+  /**
+   * Supabase project JWT secret, when STAFF_IDP=supabase. Project Settings → API → JWT
+   * Settings. Verifying locally means a flaky uplink cannot lock a doctor out of the
+   * worklist, and it is the same secret Supabase signs access tokens with.
+   */
+  SUPABASE_JWT_SECRET: z.string().min(32).optional(),
   /** Which EMR export adapter to use. Anything else exports nothing. */
   EMR_EXPORT_ADAPTER: z.enum(['sandbox', 'none']).default('none'),
 

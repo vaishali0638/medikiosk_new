@@ -19,6 +19,8 @@ import {
   StaffIdentityProvider,
   UnconfiguredStaffIdentityProvider,
 } from './identity-provider';
+import { SupabaseStaffIdentityProvider } from './supabase-identity-provider';
+import { WorklistEventsService } from './worklist-events.service';
 import { StaffAuthGuard } from './staff-auth.guard';
 import { StaffAuthService } from './staff-auth.service';
 import type { Env } from '../config/env';
@@ -29,6 +31,7 @@ import type { Env } from '../config/env';
   providers: [
     StaffAuthService,
     StaffAuthGuard,
+    WorklistEventsService,
     DoctorService,
     EncounterAccessService,
     DocumentLinkService,
@@ -37,12 +40,18 @@ import type { Env } from '../config/env';
     {
       provide: StaffIdentityProvider,
       inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>): StaffIdentityProvider =>
-        // Anything other than an explicitly configured provider means nobody signs in. A
-        // clinical dashboard that fails open serves patient records to strangers.
-        config.get('STAFF_IDP', { infer: true }) === 'sandbox'
-          ? new SandboxStaffIdentityProvider(config)
-          : new UnconfiguredStaffIdentityProvider(),
+      useFactory: (config: ConfigService<Env, true>): StaffIdentityProvider => {
+        switch (config.get('STAFF_IDP', { infer: true })) {
+          case 'sandbox':
+            return new SandboxStaffIdentityProvider(config);
+          case 'supabase':
+            return new SupabaseStaffIdentityProvider(config);
+          default:
+            // Anything other than an explicitly configured provider means nobody signs in.
+            // A clinical dashboard that fails open serves patient records to strangers.
+            return new UnconfiguredStaffIdentityProvider();
+        }
+      },
     },
     {
       provide: EmrExportAdapter,

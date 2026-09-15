@@ -9,6 +9,7 @@ import { NO_DIAGNOSIS_STATEMENT, PROVENANCE_LABELS } from '@medikiosk/terminolog
 import type { Database } from '../src/db/database.types';
 import { AppModule } from '../src/app.module';
 import { DomainExceptionFilter } from '../src/common/domain-exception.filter';
+import { WorklistEventsService, type WorklistChange } from '../src/staff/worklist-events.service';
 import { createTestDb, seedFixture, truncateAll, type Fixture } from './db-fixture';
 
 const record = {
@@ -530,6 +531,60 @@ describe('doctor dashboard and HIS export (integration)', () => {
         .where('action', '=', 'CLINICAL_RECORD_EXPORTED')
         .executeTakeFirstOrThrow();
       expect(event.entity_id).toBe(encounterId);
+    });
+  });
+
+  describe('worklist changes', () => {
+    it('refuse an unauthenticated subscriber', async () => {
+      await http().get('/v1/doctor/worklist/stream').set(base()).expect(401);
+    });
+
+    it('reach a subscriber when a visit changes, carrying no patient data', async () => {
+      // The SSE route is a thin wrapper over this: it filters by hospital and department
+      // and writes a fixed frame. Testing the notification path directly is what proves
+      // the trigger fires and the listener hears it — driving the stream through supertest
+      // holds the socket open and jest never exits.
+      const events = app.get(WorklistEventsService);
+      const heard: WorklistChange[] = [];
+      const unsubscribe = events.subscribe((change) => heard.push(change));
+
+      // A token landing on a waiting visit: the change a doctor is watching the list for.
+      await db
+        .updateTable('encounter')
+        .set({ his_token: 'AYU-9001', token_issued_at: new Date() })
+        .where('pre_checkin_id', '=', preCheckinId)
+        .execute();
+
+      // NOTIFY is delivered after commit, on another connection. Poll rather than sleep a
+      // fixed amount: a fixed wait is either flaky or slow, and usually both.
+      for (let attempt = 0; attempt < 50 && heard.length === 0; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      unsubscribe();
+
+      expect(heard.length).toBeGreaterThan(0);
+      expect(heard[0]).toEqual({ hospitalId: fx.hospitalId, departmentId: fx.departmentId });
+
+      // The payload is readable by anything that can LISTEN on the channel, so it names a
+      // department and nothing more. The token and the patient stay out of it.
+      const payload = JSON.stringify(heard);
+      expect(payload).not.toContain('AYU-9001');
+      expect(payload).not.toContain(fx.patientId);
+    });
+
+    it('stop delivering once a subscriber has gone', async () => {
+      const events = app.get(WorklistEventsService);
+      const heard: WorklistChange[] = [];
+      events.subscribe((change) => heard.push(change))();
+
+      await db
+        .updateTable('encounter')
+        .set({ his_token: 'AYU-9002' })
+        .where('pre_checkin_id', '=', preCheckinId)
+        .execute();
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(heard).toHaveLength(0);
     });
   });
 });

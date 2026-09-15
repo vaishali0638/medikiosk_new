@@ -1,14 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, ApiError, clearToken, readToken, type WorklistEntry } from '@/lib/api';
+import { api, apiBaseUrl, ApiError, clearToken, readToken, type WorklistEntry } from '@/lib/api';
 import { TopBar } from '@/components/top-bar';
 
 export default function WorklistPage() {
   const router = useRouter();
   const [entries, setEntries] = useState<WorklistEntry[]>([]);
   const [search, setSearch] = useState('');
+  // Read by the stream handler without making it a dependency: re-subscribing on every
+  // keystroke would tear the connection down and build it up again as the doctor types.
+  const searchRef = useRef('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +48,55 @@ export default function WorklistPage() {
     void load();
   }, [load, router]);
 
+  // Live updates.
+  //
+  // The stream carries no patient data — only "your worklist changed" — and this re-fetches
+  // through the same authenticated, department-scoped endpoint as the first load. One place
+  // decides who sees which patient, and it is not this component.
+  //
+  // fetch with a reader rather than EventSource, which cannot set headers: the alternative
+  // is the session token in a query string, where it lands in every proxy and access log
+  // between here and the API. A staff token opens patient records.
+  useEffect(() => {
+    const token = readToken();
+    if (!token) return;
+
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/v1/doctor/worklist/stream`, {
+          headers: { authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!response.ok || !response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Frames are separated by a blank line. Keep the tail: a chunk boundary can fall
+          // anywhere, including the middle of one.
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() ?? '';
+          for (const frame of frames) {
+            if (frame.includes('event: worklist')) void load(searchRef.current || undefined);
+          }
+        }
+      } catch {
+        // An aborted or dropped stream is not something a clinician needs told. The list
+        // they are looking at is still the list as of the last fetch.
+      }
+    })();
+
+    return () => controller.abort();
+  }, [load]);
+
   return (
     <>
       <TopBar />
@@ -66,7 +118,10 @@ export default function WorklistPage() {
             aria-label="Search by token or UHID"
             placeholder="Token or UHID"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              searchRef.current = e.target.value;
+            }}
             style={{ maxWidth: 260 }}
           />
           <button type="submit">Search</button>
@@ -75,6 +130,7 @@ export default function WorklistPage() {
               type="button"
               onClick={() => {
                 setSearch('');
+                searchRef.current = '';
                 void load();
               }}
             >
