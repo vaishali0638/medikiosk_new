@@ -20,6 +20,38 @@ Reproduce with `bash scripts/probe-api.sh` against a running stack.
 
 Five routes returned **500** before this pass and no longer do — see below.
 
+## What each API group is for
+
+Sixty-three routes in eleven groups. Which client calls which, and why it exists.
+
+| Group                      | Routes | Called by                       | Purpose                                                                                                                                                                                                              |
+| -------------------------- | ------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/health`, `/health/ready` | 2      | Load balancer, kiosk at startup | Liveness, and whether dependencies are reachable. Outside the `/v1` prefix so a probe never breaks on a version bump                                                                                                 |
+| `/v1/kiosk/*`              | 7      | Kiosk                           | Device config (languages, departments, feature flags), session lifecycle, language selection, activity heartbeat, walk-in visit, session end with wipe attestation                                                   |
+| `/v1/consents/*`           | 4      | Kiosk                           | The published notice in the patient's language, recording a grant or refusal, withdrawal. Consent is a first-class record, not a boolean                                                                             |
+| `/v1/identity/*`           | 5      | Kiosk                           | OTP send and verify, UHID and duplicate resolution, confirmation, new-patient registration. The response is identical for a registered and unregistered number, so the kiosk cannot be used to test who is a patient |
+| `/v1/intakes/*`            | 5      | Kiosk                           | The questionnaire engine: next question by deterministic branching, answer submission with provenance, one question re-served for editing, AYUSH systems for the department                                          |
+| `/v1/precheckins/*`        | 11     | Kiosk + patient PWA             | Pre-check-in create and submit, signed QR issue, documents, patient review, follow-up delta, the clinical draft                                                                                                      |
+| `/v1/arrival/*`            | 4      | Kiosk                           | QR validation, arrival confirmation, HIS token request, status. Where replay, wrong-facility and expiry are refused                                                                                                  |
+| `/v1/patient/*`            | 5      | Patient PWA                     | The phone-side equivalents: hospital lookup, OTP, consent, notice. Separate from the kiosk routes because the trust context differs                                                                                  |
+| `/v1/doctor/*`             | 7      | Doctor console                  | Staff session, worklist, one encounter with its draft and documents, clinician verification, EMR export. Verification is the only route that turns a draft into a record                                             |
+| `/v1/governance/*`         | 6      | Governance console              | Content releases: draft, approve, transition, history, and which content kinds are live with nothing published                                                                                                       |
+| `/v1/metrics`, `/v1/ops/*` | 5      | Prometheus, operations          | Metrics in Prometheus text format, alert evaluation, device events, reconciliation queue and sweep                                                                                                                   |
+| `/docs`, `/docs-json`      | 2      | Anyone                          | OpenAPI, generated from the same Zod schemas that validate requests, so it cannot drift                                                                                                                              |
+
+Three things worth noticing about the shape:
+
+**The kiosk and the phone have separate routes** for the same conceptual actions. A kiosk is
+a shared device in a public corridor identified by a header; a phone is personal and
+authenticated by OTP. Sharing the routes would mean sharing the trust assumptions.
+
+**`/v1/doctor/encounters/:id/confirm` is the only route in the system that produces a
+clinical record.** Everything upstream produces candidates, drafts and patient-reported
+statements. That asymmetry is the design.
+
+**Nothing lets a client write an audit event.** `audit_event` has append-only rules at the
+database level and is written only as a side effect of the action being audited.
+
 ## What the backend is
 
 A NestJS 10 modular monolith over PostgreSQL 16, with Kysely as a typed SQL builder. No
