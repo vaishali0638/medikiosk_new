@@ -98,6 +98,37 @@ void main() {
     expect(audio.spokenText.last, contains('Choose your language'));
   });
 
+  testWidgets('speaks again when the patient turns it off and back on',
+      (WidgetTester tester) async {
+    // The screen has not changed, but the patient asking for audio a second time is a
+    // patient who did not hear it the first time. Suppressing the repeat here also
+    // suppressed it for the NEXT patient: the announcement key survived the session wipe,
+    // so the second person of the day to press Audio Guidance on the home screen got
+    // silence and no way to fix it.
+    await pumpApp(tester);
+
+    await enableAudioGuidance(tester);
+    final int afterFirst = audio.spokenText.length;
+
+    await enableAudioGuidance(tester); // off
+    await enableAudioGuidance(tester); // on again
+
+    expect(audio.spokenText.length, greaterThan(afterFirst));
+  });
+
+  testWidgets('stops talking the moment Audio Guidance is switched off',
+      (WidgetTester tester) async {
+    // A patient who turns the voice off wants it to stop, not to finish the sentence.
+    await pumpApp(tester);
+
+    await enableAudioGuidance(tester);
+    final int stopsBefore = audio.stopCount;
+
+    await enableAudioGuidance(tester); // off
+
+    expect(audio.stopCount, greaterThan(stopsBefore));
+  });
+
   testWidgets('reports unavailable rather than pretending to have spoken',
       (WidgetTester tester) async {
     // SilentAudioGuidance records the text and returns `spoke: false`. That distinction is

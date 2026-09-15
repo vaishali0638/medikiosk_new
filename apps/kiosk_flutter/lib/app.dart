@@ -1168,6 +1168,9 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
       _languageTag = 'en';
       _pendingLanguageTag = null;
       _a11y = const AccessibilitySettings();
+      // Belt and braces with _toggleAudioGuidance: the next patient's first press must
+      // speak, whatever screen the last one left behind.
+      _lastAnnounced = null;
     });
 
     // A wipe that did not fully succeed is an operational fault, not a patient-facing
@@ -1176,6 +1179,26 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     if (!report.isComplete) {
       debugPrint('MediKiosk: incomplete wipe — ${report.failed.join(', ')}');
     }
+  }
+
+  /// Turns spoken guidance on or off.
+  ///
+  /// Both directions do more than flip the flag. Switching OFF stops mid-sentence, because
+  /// a patient who turns the voice off wants it to stop rather than finish. Switching ON
+  /// clears the last-announced key, because the current screen is exactly what they have
+  /// just asked to hear.
+  ///
+  /// Clearing the key is also what makes the feature work for the SECOND patient of the
+  /// day. The key used to survive the session wipe, so whoever pressed Audio Guidance on
+  /// the home screen after somebody else had already done so got silence, and no way from
+  /// inside the kiosk to fix it.
+  void _toggleAudioGuidance() {
+    final bool enabling = !_a11y.audioGuidance;
+    setState(() {
+      _a11y = _a11y.copyWith(audioGuidance: enabling);
+      _lastAnnounced = null;
+    });
+    if (!enabling) unawaited(widget.audio.stop());
   }
 
   /// Reads the current screen's heading aloud when Audio Guidance is on.
@@ -1198,7 +1221,13 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _lastAnnounced = key;
 
     final String? text = _headingFor(_view);
-    if (text == null) return;
+    if (text == null) {
+      // A screen with nothing to announce must still silence the one before it. Speaking
+      // flushes the engine on its own, so this is the only path where the previous
+      // screen's prompt would otherwise carry on over the new one.
+      unawaited(widget.audio.stop());
+      return;
+    }
 
     // Fire and forget is right here and only here: nothing downstream depends on the
     // result, the engine flushes the previous utterance itself, and a patient must never
@@ -1336,9 +1365,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           onNewRegistration: () => unawaited(_startJourney(JourneyKind.newRegistration)),
           onExistingPatientCheckIn: () => unawaited(_startJourney(JourneyKind.existingPatient)),
           onSelectLanguage: () => unawaited(_startSessionAndSelectLanguage()),
-          onToggleAudioGuidance: () => setState(
-            () => _a11y = _a11y.copyWith(audioGuidance: !_a11y.audioGuidance),
-          ),
+          onToggleAudioGuidance: _toggleAudioGuidance,
         );
 
       case ShellView.language:
@@ -1349,9 +1376,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           onSelect: (String tag) => setState(() => _pendingLanguageTag = tag),
           onContinue: () => unawaited(_confirmLanguage()),
           onExit: () => unawaited(_requestExit()),
-          onToggleAudioGuidance: () => setState(
-            () => _a11y = _a11y.copyWith(audioGuidance: !_a11y.audioGuidance),
-          ),
+          onToggleAudioGuidance: _toggleAudioGuidance,
           onToggleLargeText: () => setState(
             () => _a11y = _a11y.copyWith(largeText: !_a11y.largeText),
           ),

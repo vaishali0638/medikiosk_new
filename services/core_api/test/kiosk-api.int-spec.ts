@@ -121,6 +121,28 @@ describe('kiosk API (integration)', () => {
       expect(tags).toEqual(['en', 'hi']);
     });
 
+    it('labels a language with its endonym, not whatever the hospital typed', async () => {
+      // An administrator configuring a hospital will sooner or later type the Latin name
+      // into this field. A patient who reads only Odia cannot find "Odia" in a list
+      // written in an alphabet they do not read, so what a language is called in its own
+      // script is taken from the registry and is not a per-hospital decision.
+      await db
+        .insertInto('hospital_language')
+        .values({
+          hospital_id: fx.hospitalId,
+          language_tag: 'or',
+          label: 'Odia',
+          clinically_reviewed: true,
+          audio_available: false,
+        })
+        .execute();
+      await publishConsentNotice(db, fx.hospitalId, 'or');
+
+      const res = await http().get('/v1/kiosk/config').set(headers()).expect(200);
+      const odia = res.body.languages.find((l: { tag: string }) => l.tag === 'or');
+      expect(odia.label).toBe('ଓଡ଼ିଆ');
+    });
+
     it('offers only enabled departments', async () => {
       await db
         .insertInto('department')

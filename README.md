@@ -44,6 +44,34 @@ tests                  Contract, integration and end-to-end journeys
 
 Requires Node 22+ (see `.nvmrc`), Docker, and Flutter 3.27+ for the kiosk client.
 
+### Everything at once
+
+```bash
+npm install
+npm start
+```
+
+`npm start` brings up PostgreSQL (Compose, or a local instance if one is already
+listening), applies migrations, seeds the placeholder content, then starts the API and all
+three web consoles — waiting for each to answer before starting the next, and printing the
+URLs when they do. Ctrl-C stops everything it started.
+
+|                    |                            |
+| ------------------ | -------------------------- |
+| API                | http://localhost:3000      |
+| OpenAPI            | http://localhost:3000/docs |
+| Patient PWA        | http://localhost:3001      |
+| Doctor console     | http://localhost:3002      |
+| Governance console | http://localhost:3003      |
+
+The kiosk is a native app and is started separately:
+
+```bash
+cd apps/kiosk_flutter && flutter run -d macos --dart-define=MEDIKIOSK_API_BASE_URL=http://localhost:3000
+```
+
+The steps below are the same thing by hand, for when one piece needs restarting on its own.
+
 ```bash
 npm install
 cp infra/docker/.env.example infra/docker/.env   # then edit the placeholder passwords

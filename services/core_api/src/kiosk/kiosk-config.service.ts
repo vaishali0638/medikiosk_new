@@ -46,12 +46,24 @@ export class KioskConfigService {
       .where('id', '=', kiosk.branchId)
       .executeTakeFirstOrThrow();
 
+    // The label served is the registry ENDONYM, joined from `language`, not the free-text
+    // `hospital_language.label`. A patient who reads only Odia cannot find their language
+    // in a list an administrator typed as "Odia" in Latin script, and what a language is
+    // called in its own script is not a per-hospital decision. The configured label
+    // remains as a fallback for a row whose tag somehow predates the registry.
     const languageRows = await this.db
       .selectFrom('hospital_language')
-      .select(['language_tag', 'label', 'clinically_reviewed', 'audio_available'])
-      .where('hospital_id', '=', hospital.id)
-      .where('clinically_reviewed', '=', true)
-      .orderBy('language_tag', 'asc')
+      .leftJoin('language', 'language.tag', 'hospital_language.language_tag')
+      .select([
+        'hospital_language.language_tag',
+        'hospital_language.label',
+        'language.endonym',
+        'hospital_language.clinically_reviewed',
+        'hospital_language.audio_available',
+      ])
+      .where('hospital_language.hospital_id', '=', hospital.id)
+      .where('hospital_language.clinically_reviewed', '=', true)
+      .orderBy('hospital_language.language_tag', 'asc')
       .execute();
 
     const departmentRows = await this.db
@@ -78,7 +90,7 @@ export class KioskConfigService {
       kioskId: kiosk.deviceCode,
       languages: offerable.map((row) => ({
         tag: row.language_tag,
-        label: row.label,
+        label: row.endonym ?? row.label,
         clinicallyReviewed: row.clinically_reviewed,
         audioAvailable: row.audio_available,
       })),

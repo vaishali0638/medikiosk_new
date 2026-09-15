@@ -117,6 +117,10 @@ class AudioGuidanceHandler(context: Context) : MethodChannel.MethodCallHandler {
      * Android's voices are published per region — `ta-IN`, `bn-IN`, `ur-IN` — and a bare
      * `Locale("ta")` matches inconsistently across engine versions. Tags that already carry
      * a region are honoured as given, so a hospital can register `bn-BD` if it needs to.
+     *
+     * Nepali is the exception the default gets wrong: its voice ships as `ne-NP`, so
+     * `ne-IN` resolves to nothing and a Nepali-speaking patient in Sikkim or Darjeeling is
+     * told the language cannot be spoken when in fact it can.
      */
     private fun localeFor(tag: String?): Locale? {
         if (tag.isNullOrBlank()) return null
@@ -124,7 +128,7 @@ class AudioGuidanceHandler(context: Context) : MethodChannel.MethodCallHandler {
         val parts = normalised.split('-')
         return when {
             parts.size >= 2 -> Locale(parts[0], parts[1])
-            parts[0] == "en" -> Locale("en", "IN")
+            parts[0] == "ne" -> Locale("ne", "NP")
             else -> Locale(parts[0], "IN")
         }
     }
