@@ -57,6 +57,7 @@
   "identity.enterMobile": "Enter mobile number",
   "identity.mobile.title": "Enter mobile number",
   "identity.mobile.subtitle": "We will send a code to this number.",
+  "identity.mobile.invalid": "Indian mobile numbers begin with 6, 7, 8 or 9. Please check the number.",
   "identity.sendCode": "Send code",
   "identity.otp.title": "Enter verification code",
   "identity.otp.sentTo": "Code sent to",

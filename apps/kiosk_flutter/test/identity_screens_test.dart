@@ -279,4 +279,84 @@ void main() {
       expect(find.text('Exit'), findsOneWidget);
     });
   });
+
+  group('mobile entry rejects what the server would', () {
+    testWidgets('keeps Send code inactive for a number that cannot be Indian',
+        (WidgetTester tester) async {
+      // Ten digits, so the display is full — but the contract's rule is
+      // /^[6-9]\d{9}$/, and the server refuses anything else with VALIDATION_FAILED.
+      // Sending it put the patient on the generic error screen with their session gone,
+      // for a mistyped first digit.
+      await tester.pumpWidget(
+        host(
+          MobileEntryScreen(
+            strings: KioskStrings.of('en'),
+            value: '1234567890',
+            onDigit: (_) {},
+            onBackspace: () {},
+            onClear: () {},
+            onSubmit: () {},
+            onExit: () {},
+          ),
+        ),
+      );
+
+      final MkButton send = tester.widget<MkButton>(
+        find.widgetWithText(MkButton, 'Send code'),
+      );
+      expect(send.onPressed, isNull);
+      expect(find.textContaining('begin with 6, 7, 8 or 9'), findsOneWidget);
+    });
+
+    testWidgets('accepts a real Indian mobile number', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        host(
+          MobileEntryScreen(
+            strings: KioskStrings.of('en'),
+            value: '9876543210',
+            onDigit: (_) {},
+            onBackspace: () {},
+            onClear: () {},
+            onSubmit: () {},
+            onExit: () {},
+          ),
+        ),
+      );
+
+      final MkButton send = tester.widget<MkButton>(
+        find.widgetWithText(MkButton, 'Send code'),
+      );
+      expect(send.onPressed, isNotNull);
+      expect(find.textContaining('begin with 6'), findsNothing);
+    });
+
+    testWidgets('says nothing while the number is still being typed',
+        (WidgetTester tester) async {
+      // A hint shown after two digits would accuse every patient mid-entry.
+      await tester.pumpWidget(
+        host(
+          MobileEntryScreen(
+            strings: KioskStrings.of('en'),
+            value: '12',
+            onDigit: (_) {},
+            onBackspace: () {},
+            onClear: () {},
+            onSubmit: () {},
+            onExit: () {},
+          ),
+        ),
+      );
+
+      expect(find.textContaining('begin with 6'), findsNothing);
+    });
+
+    test('matches the contract rule exactly', () {
+      for (final String bad in <String>['1234567890', '5999999999', '987654321', '', 'abcdefghij']) {
+        expect(MobileEntryScreen.indianMobile.hasMatch(bad), isFalse, reason: bad);
+      }
+      for (final String good in <String>['6000000000', '7123456789', '8999999999', '9876543210']) {
+        expect(MobileEntryScreen.indianMobile.hasMatch(good), isTrue, reason: good);
+      }
+    });
+  });
 }

@@ -57,6 +57,7 @@
   "identity.enterMobile": "মোবাইল নম্বৰ দিয়ক",
   "identity.mobile.title": "মোবাইল নম্বৰ দিয়ক",
   "identity.mobile.subtitle": "আমি এই নম্বৰলৈ এটা ক'ড পঠিয়াম।",
+  "identity.mobile.invalid": "ভাৰতীয় মোবাইল নম্বৰ 6, 7, 8 বা 9 ৰে আৰম্ভ হয়। অনুগ্ৰহ কৰি নম্বৰটো চাই লওক।",
   "identity.sendCode": "ক'ড পঠিয়াওক",
   "identity.otp.title": "সত্যাপন ক'ড দিয়ক",
   "identity.otp.sentTo": "ক'ড পঠিওৱা হ'ল",

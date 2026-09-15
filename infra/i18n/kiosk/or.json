@@ -57,6 +57,7 @@
   "identity.enterMobile": "ମୋବାଇଲ ନମ୍ବର ଲେଖନ୍ତୁ",
   "identity.mobile.title": "ମୋବାଇଲ ନମ୍ବର ଲେଖନ୍ତୁ",
   "identity.mobile.subtitle": "ଆମେ ଏହି ନମ୍ବରକୁ ଏକ ସଂକେତ ପଠାଇବୁ।",
+  "identity.mobile.invalid": "ଭାରତୀୟ ମୋବାଇଲ ନମ୍ବର 6, 7, 8 କିମ୍ବା 9 ରୁ ଆରମ୍ଭ ହୁଏ। ଦୟାକରି ନମ୍ବର ଯାଞ୍ଚ କରନ୍ତୁ।",
   "identity.sendCode": "ସଂକେତ ପଠାନ୍ତୁ",
   "identity.otp.title": "ଯାଞ୍ଚ ସଂକେତ ଲେଖନ୍ତୁ",
   "identity.otp.sentTo": "ସଂକେତ ପଠାଯାଇଛି",

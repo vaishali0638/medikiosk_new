@@ -57,6 +57,7 @@
   "identity.enterMobile": "मोबाइल नंबर दर्ज करें",
   "identity.mobile.title": "मोबाइल नंबर दर्ज करें",
   "identity.mobile.subtitle": "हम इस नंबर पर एक कोड भेजेंगे।",
+  "identity.mobile.invalid": "भारतीय मोबाइल नंबर 6, 7, 8 या 9 से शुरू होते हैं। कृपया नंबर जाँच लें।",
   "identity.sendCode": "कोड भेजें",
   "identity.otp.title": "सत्यापन कोड दर्ज करें",
   "identity.otp.sentTo": "कोड भेजा गया",

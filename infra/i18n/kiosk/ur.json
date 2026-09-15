@@ -57,6 +57,7 @@
   "identity.enterMobile": "موبائل نمبر درج کریں",
   "identity.mobile.title": "موبائل نمبر درج کریں",
   "identity.mobile.subtitle": "ہم اس نمبر پر ایک کوڈ بھیجیں گے۔",
+  "identity.mobile.invalid": "بھارتی موبائل نمبر 6، 7، 8 یا 9 سے شروع ہوتے ہیں۔ براہِ کرم نمبر جانچ لیں۔",
   "identity.sendCode": "کوڈ بھیجیں",
   "identity.otp.title": "تصدیقی کوڈ درج کریں",
   "identity.otp.sentTo": "کوڈ بھیجا گیا",

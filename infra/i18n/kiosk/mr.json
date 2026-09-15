@@ -57,6 +57,7 @@
   "identity.enterMobile": "मोबाइल क्रमांक टाका",
   "identity.mobile.title": "मोबाइल क्रमांक टाका",
   "identity.mobile.subtitle": "आम्ही या क्रमांकावर एक कोड पाठवू.",
+  "identity.mobile.invalid": "भारतीय मोबाइल क्रमांक 6, 7, 8 किंवा 9 ने सुरू होतात. कृपया क्रमांक तपासा.",
   "identity.sendCode": "कोड पाठवा",
   "identity.otp.title": "पडताळणी कोड टाका",
   "identity.otp.sentTo": "कोड पाठवला",

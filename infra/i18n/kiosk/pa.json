@@ -57,6 +57,7 @@
   "identity.enterMobile": "ਮੋਬਾਈਲ ਨੰਬਰ ਦਰਜ ਕਰੋ",
   "identity.mobile.title": "ਮੋਬਾਈਲ ਨੰਬਰ ਦਰਜ ਕਰੋ",
   "identity.mobile.subtitle": "ਅਸੀਂ ਇਸ ਨੰਬਰ 'ਤੇ ਇੱਕ ਕੋਡ ਭੇਜਾਂਗੇ।",
+  "identity.mobile.invalid": "ਭਾਰਤੀ ਮੋਬਾਈਲ ਨੰਬਰ 6, 7, 8 ਜਾਂ 9 ਨਾਲ ਸ਼ੁਰੂ ਹੁੰਦੇ ਹਨ। ਕਿਰਪਾ ਕਰਕੇ ਨੰਬਰ ਜਾਂਚੋ।",
   "identity.sendCode": "ਕੋਡ ਭੇਜੋ",
   "identity.otp.title": "ਪੁਸ਼ਟੀ ਕੋਡ ਦਰਜ ਕਰੋ",
   "identity.otp.sentTo": "ਕੋਡ ਭੇਜਿਆ ਗਿਆ",

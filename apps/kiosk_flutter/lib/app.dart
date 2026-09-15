@@ -647,7 +647,9 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   }
 
   Future<void> _sendOtp() async {
-    if (_mobileDigits.length != 10) return;
+    // The screen's own button is already gated on this; re-checked here because the
+    // request must not be shaped by whatever last touched the state.
+    if (!MobileEntryScreen.indianMobile.hasMatch(_mobileDigits)) return;
     setState(() => _busy = true);
 
     try {
@@ -1158,9 +1160,10 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
 
   Future<void> _endSession(SessionEndReason reason, {required ShellView nextView}) async {
     final SessionManager? sessions = _sessions;
-    if (sessions == null) return;
 
-    final WipeReport report = await sessions.end(reason);
+    // A session that never started still has to let the patient leave. Returning early
+    // here stranded them on whatever screen they were on, with a button that did nothing.
+    final WipeReport? report = await sessions?.end(reason);
     if (!mounted) return;
 
     setState(() {
@@ -1176,7 +1179,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     // A wipe that did not fully succeed is an operational fault, not a patient-facing
     // one. The patient sees the normal screen; the fault is visible to staff through the
     // banner and, because `wiped: true` was withheld, in the server's open-session sweep.
-    if (!report.isComplete) {
+    if (report != null && !report.isComplete) {
       debugPrint('MediKiosk: incomplete wipe — ${report.failed.join(', ')}');
     }
   }
@@ -1727,7 +1730,13 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         return KioskErrorScreen(
           strings: _strings,
           correlationId: _lastCorrelationId,
-          onStartAgain: () => setState(() => _view = ShellView.home),
+          // The screen says "This session has been cleared". It has to be true before the
+          // patient reads it, and it was not: this used to change the view and nothing
+          // else. The failed session stayed live with the previous patient's consent and
+          // identity context, and whatever they touched next was refused by the server as
+          // an illegal transition — straight back here, with no way out but the timeout.
+          onStartAgain: () =>
+              unawaited(_endSession(SessionEndReason.error, nextView: ShellView.home)),
         );
 
       case ShellView.offline:
@@ -1735,8 +1744,14 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           strings: _strings,
           correlationId: _lastCorrelationId,
           onRetry: () {
+            // Same reasoning as Start again. The network may have dropped mid-journey, so
+            // the session on the device is of unknown standing to the server; the honest
+            // move is to end it and boot clean rather than resume against it.
             setState(() => _view = ShellView.startup);
-            unawaited(_boot());
+            unawaited(() async {
+              await _endSession(SessionEndReason.error, nextView: ShellView.startup);
+              await _boot();
+            }());
           },
         );
     }

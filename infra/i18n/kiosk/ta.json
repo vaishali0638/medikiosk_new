@@ -57,6 +57,7 @@
   "identity.enterMobile": "மொபைல் எண்ணை உள்ளிடவும்",
   "identity.mobile.title": "மொபைல் எண்ணை உள்ளிடவும்",
   "identity.mobile.subtitle": "இந்த எண்ணுக்கு ஒரு குறியீட்டை அனுப்புவோம்.",
+  "identity.mobile.invalid": "இந்திய மொபைல் எண்கள் 6, 7, 8 அல்லது 9 இல் தொடங்கும். எண்ணைச் சரிபார்க்கவும்.",
   "identity.sendCode": "குறியீட்டை அனுப்பவும்",
   "identity.otp.title": "சரிபார்ப்புக் குறியீட்டை உள்ளிடவும்",
   "identity.otp.sentTo": "குறியீடு அனுப்பப்பட்டது",

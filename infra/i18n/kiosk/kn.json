@@ -57,6 +57,7 @@
   "identity.enterMobile": "ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ",
   "identity.mobile.title": "ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ",
   "identity.mobile.subtitle": "ನಾವು ಈ ಸಂಖ್ಯೆಗೆ ಒಂದು ಸಂಕೇತವನ್ನು ಕಳುಹಿಸುತ್ತೇವೆ.",
+  "identity.mobile.invalid": "ಭಾರತೀಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಗಳು 6, 7, 8 ಅಥವಾ 9 ರಿಂದ ಪ್ರಾರಂಭವಾಗುತ್ತವೆ. ದಯವಿಟ್ಟು ಸಂಖ್ಯೆಯನ್ನು ಪರಿಶೀಲಿಸಿ.",
   "identity.sendCode": "ಸಂಕೇತ ಕಳುಹಿಸಿ",
   "identity.otp.title": "ಪರಿಶೀಲನಾ ಸಂಕೇತ ನಮೂದಿಸಿ",
   "identity.otp.sentTo": "ಸಂಕೇತ ಕಳುಹಿಸಲಾಗಿದೆ",

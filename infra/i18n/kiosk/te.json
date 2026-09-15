@@ -57,6 +57,7 @@
   "identity.enterMobile": "మొబైల్ నంబర్ నమోదు చేయండి",
   "identity.mobile.title": "మొబైల్ నంబర్ నమోదు చేయండి",
   "identity.mobile.subtitle": "మేము ఈ నంబర్‌కు ఒక కోడ్ పంపుతాము.",
+  "identity.mobile.invalid": "భారతీయ మొబైల్ నంబర్లు 6, 7, 8 లేదా 9 తో ప్రారంభమవుతాయి. దయచేసి నంబర్ సరిచూడండి.",
   "identity.sendCode": "కోడ్ పంపండి",
   "identity.otp.title": "ధృవీకరణ కోడ్ నమోదు చేయండి",
   "identity.otp.sentTo": "కోడ్ పంపబడింది",

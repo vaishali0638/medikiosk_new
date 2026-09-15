@@ -57,6 +57,7 @@
   "identity.enterMobile": "മൊബൈൽ നമ്പർ നൽകുക",
   "identity.mobile.title": "മൊബൈൽ നമ്പർ നൽകുക",
   "identity.mobile.subtitle": "ഈ നമ്പറിലേക്ക് ഞങ്ങൾ ഒരു കോഡ് അയയ്ക്കും.",
+  "identity.mobile.invalid": "ഇന്ത്യൻ മൊബൈൽ നമ്പറുകൾ 6, 7, 8 അല്ലെങ്കിൽ 9 ൽ തുടങ്ങുന്നു. ദയവായി നമ്പർ പരിശോധിക്കുക.",
   "identity.sendCode": "കോഡ് അയയ്ക്കുക",
   "identity.otp.title": "പരിശോധനാ കോഡ് നൽകുക",
   "identity.otp.sentTo": "കോഡ് അയച്ചത്",

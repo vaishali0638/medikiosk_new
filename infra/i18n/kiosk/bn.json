@@ -57,6 +57,7 @@
   "identity.enterMobile": "মোবাইল নম্বর লিখুন",
   "identity.mobile.title": "মোবাইল নম্বর লিখুন",
   "identity.mobile.subtitle": "আমরা এই নম্বরে একটি কোড পাঠাব।",
+  "identity.mobile.invalid": "ভারতীয় মোবাইল নম্বর 6, 7, 8 বা 9 দিয়ে শুরু হয়। অনুগ্রহ করে নম্বরটি দেখে নিন।",
   "identity.sendCode": "কোড পাঠান",
   "identity.otp.title": "যাচাইকরণ কোড লিখুন",
   "identity.otp.sentTo": "কোড পাঠানো হয়েছে",

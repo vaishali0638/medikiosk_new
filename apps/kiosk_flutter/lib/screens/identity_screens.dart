@@ -134,6 +134,16 @@ class MobileEntryScreen extends StatelessWidget {
 
   static const int mobileLength = 10;
 
+  /// The same rule the API contract enforces (`mobileNumber` in
+  /// `packages/api_contracts/src/primitives.ts`): ten digits, and an Indian mobile number
+  /// never starts below 6.
+  ///
+  /// Checking only the length here is what put a patient on the generic error screen for a
+  /// mistyped first digit. The server refused it, correctly, with VALIDATION_FAILED — but
+  /// a refusal a patient cannot interpret, on a screen that then discarded their session,
+  /// is a far worse outcome than a hint beside the keypad.
+  static final RegExp indianMobile = RegExp(r'^[6-9]\d{9}$');
+
   final KioskStrings strings;
   final String value;
   final ValueChanged<String> onDigit;
@@ -143,7 +153,11 @@ class MobileEntryScreen extends StatelessWidget {
   final VoidCallback onExit;
   final bool busy;
 
-  bool get _complete => value.length == mobileLength;
+  bool get _complete => indianMobile.hasMatch(value);
+
+  /// Ten digits that still cannot be a mobile number. Worth saying out loud, rather than
+  /// leaving the patient with a full display and a dead button.
+  bool get _wrongPrefix => value.length == mobileLength && !_complete;
 
   @override
   Widget build(BuildContext context) {
@@ -153,8 +167,8 @@ class MobileEntryScreen extends StatelessWidget {
       primaryAction: MkButton(
         label: strings['identity.sendCode'],
         emphasis: MkButtonEmphasis.primary,
-        // Disabled until ten digits are present: a short number would produce a refusal
-        // the patient cannot interpret.
+        // Disabled until the number is one the server will accept: a refusal the patient
+        // cannot interpret is worse than a button that is visibly not ready yet.
         onPressed: _complete && !busy ? onSubmit : null,
       ),
       exitAction: MkButton(
@@ -169,6 +183,17 @@ class MobileEntryScreen extends StatelessWidget {
             length: mobileLength,
             semanticLabel: strings['identity.mobile.title'],
           ),
+          if (_wrongPrefix) ...<Widget>[
+            const SizedBox(height: MkSpacing.md),
+            Text(
+              strings['identity.mobile.invalid'],
+              textAlign: TextAlign.center,
+              style: MkType.body.toTextStyle(
+                color: MkColors.neutralText,
+                scale: AccessibilityScope.of(context).textScale,
+              ),
+            ),
+          ],
           const SizedBox(height: MkSpacing.xl),
           MkKeypad(
             onDigit: (String d) => value.length < mobileLength ? onDigit(d) : null,
