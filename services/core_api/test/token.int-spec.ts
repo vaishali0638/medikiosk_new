@@ -441,11 +441,14 @@ describe('HIS token (integration)', () => {
       expect(sweep.body.pending).toBe(1);
     });
 
+    // 401 rather than 400 for both: nothing about these requests is malformed, the caller
+    // has not authenticated. Identical status and body for a missing and a wrong key, so a
+    // caller cannot learn whether the operations API is configured.
     it('refuses an operator request with no credentials', async () => {
       await http()
         .get('/v1/ops/reconciliation')
         .set(CORRELATION_ID_HEADER, randomUUID())
-        .expect(400);
+        .expect(401);
     });
 
     it('refuses an operator request with the wrong key', async () => {
@@ -455,7 +458,7 @@ describe('HIS token (integration)', () => {
           authorization: 'Bearer wrong-key-wrong-key-wrong',
           [CORRELATION_ID_HEADER]: randomUUID(),
         })
-        .expect(400);
+        .expect(401);
     });
   });
 

@@ -713,11 +713,36 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         _handleApiFailure(error);
         return;
       }
-      // Wrong code, expired, or locked out: one neutral outcome, and the attempt counter
-      // comes from the server rather than being tracked here.
+      // A mistyped digit is not a failed identification.
+      //
+      // Every outcome used to land on "we could not confirm your details — speak to the
+      // counter", which made the five attempts the server grants unreachable: one wrong
+      // digit in a six-digit code ended the journey, on a screen that was already built to
+      // display the attempts remaining. Collapsing the outcomes was right about not
+      // telling the patient WHICH kind of failure occurred; it was wrong about sending
+      // them away for the one failure that is entirely normal.
+      //
+      // RATE_LIMITED is the server saying the attempts are gone. That, and anything
+      // unexpected, still ends the attempt. A plain refusal keeps the patient on the
+      // keypad.
+      final bool exhausted = error.code == 'RATE_LIMITED';
+      final int? remaining =
+          _otpAttemptsRemaining == null ? null : _otpAttemptsRemaining! - 1;
+
+      if (exhausted || remaining == null || remaining <= 0) {
+        setState(() {
+          _lastCorrelationId = error.correlationId;
+          _view = ShellView.identityNotConfirmed;
+        });
+        return;
+      }
+
+      // Counted down locally for DISPLAY only. The server remains the authority on
+      // whether another attempt is allowed; this number just stops the patient guessing
+      // in the dark, and if the two ever disagree the server's refusal is what happens.
       setState(() {
         _lastCorrelationId = error.correlationId;
-        _view = ShellView.identityNotConfirmed;
+        _otpAttemptsRemaining = remaining;
       });
     }
   }

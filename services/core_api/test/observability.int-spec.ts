@@ -51,8 +51,33 @@ describe('observability and operations (integration)', () => {
 
   describe('metrics', () => {
     it('are not readable without an operations credential', async () => {
-      await http().get('/v1/metrics').set(base()).expect(400);
-      await http().get('/v1/ops/alerts').set(base()).expect(400);
+      // 401, not 400. This asserted 400 for a long time, which is simply the wrong word:
+      // nothing about the request is malformed, the caller has not authenticated. It
+      // mattered beyond pedantry because Prometheus scrapes /v1/metrics and a 4xx that is
+      // not 401 — or worse the 500 an unconfigured key used to produce — reads as the API
+      // being broken, which is a false outage alert from the one component whose job is to
+      // notice real ones.
+      await http().get('/v1/metrics').set(base()).expect(401);
+      await http().get('/v1/ops/alerts').set(base()).expect(401);
+    });
+
+    it('refuse a wrong key exactly as they refuse a missing one', async () => {
+      // Identical status and body, so a caller cannot learn from the response whether the
+      // operations API is configured at all.
+      const wrong = await http()
+        .get('/v1/metrics')
+        .set('Authorization', 'Bearer not-the-key-at-all-not-even-close')
+        .expect(401);
+      const absent = await http().get('/v1/metrics').expect(401);
+
+      // Everything but the correlation id, which is per-request by design.
+      const withoutCorrelation = (body: unknown): Record<string, unknown> => {
+        const { correlationId, ...rest } = body as Record<string, unknown>;
+        void correlationId;
+        return rest;
+      };
+      expect(withoutCorrelation(wrong.body)).toEqual(withoutCorrelation(absent.body));
+      expect(withoutCorrelation(wrong.body)).not.toHaveProperty('internalDetail');
     });
 
     it('render in Prometheus text format', async () => {

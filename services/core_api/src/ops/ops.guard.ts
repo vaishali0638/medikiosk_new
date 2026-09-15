@@ -24,9 +24,15 @@ export class OpsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<CorrelatedRequest>();
     const expected = this.config.get('OPS_API_KEY', { infer: true });
 
+    // 401, not 500. Refusing is right — these endpoints must never default open — but an
+    // unset key is a configuration state, not a server fault, and calling it INTERNAL_ERROR
+    // had two costs. Prometheus scrapes /v1/metrics: a 500 there reads as the API being
+    // down, which is an alerting false positive in the one component whose job is to notice
+    // outages. And it told an unauthenticated caller that the ops API is unconfigured,
+    // which is not their business.
     if (!expected) {
       throw new DomainError(
-        'INTERNAL_ERROR',
+        'NOT_AUTHENTICATED',
         request.correlationId,
         'OPS_API_KEY is not configured; operations endpoints are disabled',
       );
@@ -37,8 +43,11 @@ export class OpsGuard implements CanActivate {
 
     const a = Buffer.from(supplied, 'utf8');
     const b = Buffer.from(expected, 'utf8');
+    // Same code and status as the unconfigured case above, so a caller cannot tell a wrong
+    // key from an absent one. VALIDATION_FAILED was also simply the wrong word: nothing
+    // about the request was malformed.
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      throw new DomainError('VALIDATION_FAILED', request.correlationId, 'bad ops credentials');
+      throw new DomainError('NOT_AUTHENTICATED', request.correlationId, 'bad ops credentials');
     }
     return true;
   }

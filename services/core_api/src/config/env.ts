@@ -40,7 +40,23 @@ export const envSchema = z.object({
    * assertProductionAdapters() refuses it in production — a production log holding live
    * one-time codes would be a credential store in disguise.
    */
-  SMS_ADAPTER: z.enum(['sandbox', 'unconfigured']).default('sandbox'),
+  SMS_ADAPTER: z.enum(['sandbox', 'http', 'unconfigured']).default('sandbox'),
+
+  /** Gateway endpoint, when SMS_ADAPTER=http. */
+  SMS_API_URL: z.string().url().optional(),
+  SMS_API_KEY: z.string().min(8).optional(),
+  /** `Authorization` for most gateways; `authkey` for MSG91. */
+  SMS_AUTH_HEADER: z.string().min(1).default('Authorization'),
+  /**
+   * Registered sender ID — six alphabetic characters in India. An unregistered header is
+   * dropped by the operator rather than the gateway, so the send "succeeds" and nothing
+   * arrives.
+   */
+  SMS_SENDER_ID: z.string().min(1).optional(),
+  /** DLT template id. India requires transactional SMS to match a registered template. */
+  SMS_DLT_TEMPLATE_ID: z.string().min(1).optional(),
+  /** A patient is waiting at the kiosk; a slower gateway than this has already failed. */
+  SMS_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
 
   /** HMAC key for one-time codes. Codes are never stored in plaintext. */
   OTP_HMAC_SECRET: z.string().min(32).optional(),
@@ -127,6 +143,19 @@ export function assertProductionAdapters(env: Env): void {
     problems.push(
       'SMS_ADAPTER=sandbox writes one-time codes to the log and cannot run in production',
     );
+  }
+  if (env.SMS_ADAPTER === 'http') {
+    // Every one of these is required for a message to actually arrive in India. Missing
+    // any of them produces a send that the gateway accepts and the operator discards,
+    // which is the worst failure available: nobody is told, and the patient waits.
+    for (const [name, value] of [
+      ['SMS_API_URL', env.SMS_API_URL],
+      ['SMS_API_KEY', env.SMS_API_KEY],
+      ['SMS_SENDER_ID', env.SMS_SENDER_ID],
+      ['SMS_DLT_TEMPLATE_ID', env.SMS_DLT_TEMPLATE_ID],
+    ] as const) {
+      if (!value) problems.push(`${name} is required when SMS_ADAPTER=http`);
+    }
   }
   if (!env.OTP_HMAC_SECRET) {
     problems.push('OTP_HMAC_SECRET is required in production');
