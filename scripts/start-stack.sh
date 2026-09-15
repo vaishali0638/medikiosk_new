@@ -15,6 +15,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# One .env at the repository root, exported so the migrate and seed CLIs see it too —
+# they are separate processes and read the environment, not the file.
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+  echo "using .env"
+fi
+
 DB_NAME="${MEDIKIOSK_DB:-medikiosk_dev}"
 export DATABASE_URL="${DATABASE_URL:-postgres://localhost:5432/${DB_NAME}}"
 
@@ -31,6 +41,12 @@ say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 
 # ---------------------------------------------------------------- database
 say "1/5  PostgreSQL"
+case "$DATABASE_URL" in
+  *supabase.co*|*supabase.com*)
+    echo "  hosted Supabase — not starting anything locally"
+    npm run supabase:check || exit 1
+    ;;
+  *)
 if ! psql -d "$DB_NAME" -c 'SELECT 1' >/dev/null 2>&1; then
   if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
     echo "  ${DB_NAME} unreachable — starting the Compose stack"
@@ -42,7 +58,9 @@ if ! psql -d "$DB_NAME" -c 'SELECT 1' >/dev/null 2>&1; then
     exit 1
   fi
 fi
-echo "  ok — ${DATABASE_URL}"
+echo "  ok — local ${DB_NAME}"
+    ;;
+esac
 
 # ------------------------------------------------------------ schema + data
 say "2/5  Migrations and seed"

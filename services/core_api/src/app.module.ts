@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuditRepository } from './audit/audit.repository';
@@ -28,6 +29,12 @@ import { HealthModule } from './health/health.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      // Both locations, because the API is started from either. `npm run start:dev -w
+      // @medikiosk/core-api` runs with the service as the working directory, so a .env at
+      // the repository root — which is where everything else expects it, and where the
+      // Supabase runbook puts it — was silently not read. The failure is a server that
+      // starts against the wrong database and says nothing.
+      envFilePath: ['.env', resolve(__dirname, '../../../.env')],
       // Fail fast on a bad environment rather than surfacing it mid-journey.
       validate: (raw) => loadEnv(raw as NodeJS.ProcessEnv),
     }),
