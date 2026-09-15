@@ -128,7 +128,7 @@ void main() {
         'alreadySubmitted': false,
         'summaryId': 'sum1',
         'tokenHandle': 'th1',
-        'draftLabel': 'AI-assisted pre-consultation draft — not verified',
+        'draftLabel': "Pre-consultation draft from the patient's own answers — not verified",
         'generator': 'DETERMINISTIC',
         'fellBackToRules': false,
       },

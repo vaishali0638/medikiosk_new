@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nest
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import {
-  DOCTOR_FACING_DRAFT_LABEL,
+  draftBannerFor,
   PATIENT_FACING_SUMMARY_LABEL,
   PROVENANCE_LABELS,
 } from '@medikiosk/terminology';
@@ -172,7 +172,7 @@ export class SummaryController {
       summaryId: draft.summaryId,
       // Returned so a client cannot render the draft without also having the label in
       // hand. A client that wants to show the text has been given the banner with it.
-      draftLabel: DOCTOR_FACING_DRAFT_LABEL,
+      draftLabel: draftBannerFor(draft.generator),
       generator: draft.generator,
       fellBackToRules: draft.fellBack,
     };
@@ -181,8 +181,9 @@ export class SummaryController {
   @Get('precheckins/:preCheckinId/draft')
   @ApiOperation({
     summary:
-      'The pre-consultation draft. Always labelled AI-ASSISTED DRAFT — NOT VERIFIED; ' +
-      'nothing in it is a clinical record.',
+      'The pre-consultation draft. Banner names what produced it — a model or the ' +
+      'deterministic composer — and both say NOT VERIFIED. Nothing in it is a clinical ' +
+      'record until a clinician says so.',
   })
   async draft(
     @Req() req: KioskRequest,
@@ -199,7 +200,7 @@ export class SummaryController {
       summaryId: latest.summaryId,
       // Two labels, deliberately: the banner a human reads, and the machine-readable
       // provenance value that must travel with the content into any other system.
-      banner: DOCTOR_FACING_DRAFT_LABEL,
+      banner: draftBannerFor(latest.generator),
       provenance: latest.label,
       generator: latest.generator,
       generatorVersion: latest.generatorVersion,

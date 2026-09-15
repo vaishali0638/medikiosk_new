@@ -17,7 +17,8 @@
     "migrate:reset": "tsx scripts/reset-database.ts",
     "seed": "tsx scripts/seed.ts",
     "test:int": "jest --config jest.integration.config.js --runInBand",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "supabase:check": "tsx scripts/supabase-check.ts"
   },
   "dependencies": {
     "@medikiosk/api-contracts": "0.1.0",

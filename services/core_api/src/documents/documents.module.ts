@@ -14,6 +14,7 @@ import {
 } from './file-validation';
 import { OcrAdapter, UnavailableOcrAdapter } from './ocr.adapter';
 import { LocalEncryptedObjectStore, ObjectStore, UnconfiguredObjectStore } from './object-store';
+import { SupabaseObjectStore } from './supabase-object-store';
 import type { Env } from '../config/env';
 
 @Module({
@@ -27,10 +28,19 @@ import type { Env } from '../config/env';
     {
       provide: ObjectStore,
       inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>): ObjectStore =>
-        config.get('OBJECT_STORE_ADAPTER', { infer: true }) === 'local'
-          ? new LocalEncryptedObjectStore(config)
-          : new UnconfiguredObjectStore(),
+      useFactory: (config: ConfigService<Env, true>): ObjectStore => {
+        switch (config.get('OBJECT_STORE_ADAPTER', { infer: true })) {
+          case 'local':
+            return new LocalEncryptedObjectStore(config);
+          case 'supabase':
+            return new SupabaseObjectStore(config);
+          default:
+            // Throws on use rather than degrading to local disk: a deployment that thinks
+            // it is writing to durable storage and is actually writing to a container
+            // filesystem loses every document on the next restart, silently.
+            return new UnconfiguredObjectStore();
+        }
+      },
     },
     {
       provide: MalwareScanner,

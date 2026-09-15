@@ -1,9 +1,9 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env';
+import { ObjectEncryption } from './object-encryption';
 
 export interface StoredObject {
   readonly objectKey: string;
@@ -33,71 +33,37 @@ export abstract class ObjectStore {
   abstract deleteRejected(key: string): Promise<void>;
 }
 
-/** AES-256-GCM. The IV and auth tag are stored alongside the ciphertext. */
-const ALGORITHM = 'aes-256-gcm';
-const IV_BYTES = 12;
-const TAG_BYTES = 16;
-
 @Injectable()
 export class LocalEncryptedObjectStore extends ObjectStore {
   readonly kind = 'local-encrypted';
-  private readonly logger = new Logger(LocalEncryptedObjectStore.name);
   private readonly root: string;
-  private readonly keyId: string;
-  private readonly key: Buffer;
+  private readonly crypto: ObjectEncryption;
 
   constructor(config: ConfigService<Env, true>) {
     super();
     this.root = resolve(
       config.get('OBJECT_STORE_LOCAL_ROOT', { infer: true }) ?? './.data/objects',
     );
-    this.keyId = config.get('OBJECT_ENCRYPTION_KEY_ID', { infer: true }) ?? 'dev';
-
-    const secret = config.get('OBJECT_ENCRYPTION_KEY', { infer: true });
-    if (!secret) {
-      if (config.get('NODE_ENV', { infer: true }) === 'production') {
-        throw new Error('OBJECT_ENCRYPTION_KEY is required in production');
-      }
-      this.logger.warn(
-        'OBJECT_ENCRYPTION_KEY is not set. Using an ephemeral development key — documents ' +
-          'stored before a restart will not be readable afterwards.',
-      );
-      this.key = randomBytes(32);
-    } else {
-      // scrypt rather than the raw secret: a configured passphrase is rarely 32 bytes of
-      // entropy, and stretching it costs nothing at boot.
-      this.key = scryptSync(secret, `medikiosk:${this.keyId}`, 32);
-    }
+    this.crypto = new ObjectEncryption(config);
   }
 
   async put(key: string, plaintext: Buffer): Promise<StoredObject> {
-    // Hash the ORIGINAL, before encryption. The hash has to prove the bytes the patient
-    // uploaded are the bytes the doctor sees, independent of how they were stored.
-    const sha256 = createHash('sha256').update(plaintext).digest('hex');
-
-    const iv = randomBytes(IV_BYTES);
-    const cipher = createCipheriv(ALGORITHM, this.key, iv);
-    const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-    const tag = cipher.getAuthTag();
-
+    const { envelope, sha256 } = this.crypto.seal(plaintext);
     const path = this.pathFor(key);
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, Buffer.concat([iv, tag, ciphertext]), { flag: 'wx' });
+    // `wx` fails if the object exists. Originals are immutable.
+    await writeFile(path, envelope, { flag: 'wx' });
 
-    return { objectKey: key, sha256, byteSize: plaintext.byteLength, encryptionKeyId: this.keyId };
+    return {
+      objectKey: key,
+      sha256,
+      byteSize: plaintext.byteLength,
+      encryptionKeyId: this.crypto.keyId,
+    };
   }
 
   async get(key: string): Promise<Buffer> {
-    const raw = await readFile(this.pathFor(key));
-    const iv = raw.subarray(0, IV_BYTES);
-    const tag = raw.subarray(IV_BYTES, IV_BYTES + TAG_BYTES);
-    const ciphertext = raw.subarray(IV_BYTES + TAG_BYTES);
-
-    const decipher = createDecipheriv(ALGORITHM, this.key, iv);
-    decipher.setAuthTag(tag);
-    // GCM authentication means a tampered file throws rather than returning altered
-    // bytes — which is exactly what "never silently modified" has to mean in practice.
-    return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    return this.crypto.open(await readFile(this.pathFor(key)));
   }
 
   async deleteRejected(key: string): Promise<void> {

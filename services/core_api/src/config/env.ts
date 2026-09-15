@@ -20,8 +20,28 @@ export const envSchema = z.object({
   /** Object storage for original documents. */
   OBJECT_STORE_ENDPOINT: z.string().url().optional(),
   OBJECT_STORE_BUCKET: z.string().min(1).optional(),
-  OBJECT_STORE_ADAPTER: z.enum(['local', 'unconfigured']).default('local'),
+  OBJECT_STORE_ADAPTER: z.enum(['local', 'supabase', 'unconfigured']).default('local'),
   OBJECT_STORE_LOCAL_ROOT: z.string().min(1).optional(),
+
+  /**
+   * Supabase project, when it hosts the database, the object store, or both.
+   *
+   * The service-role key bypasses row-level security by design — it is the backend's key,
+   * not a client's, and must never reach a browser or a kiosk. Nothing in this repository
+   * sends it anywhere except to Supabase itself.
+   */
+  /** Overrides the TLS decision, which is otherwise made from the database host. */
+  DB_SSL: z.coerce.boolean().optional(),
+  /**
+   * Pool size. Modest by default because managed Postgres counts connections: Supabase's
+   * smaller plans allow few direct ones, and two API nodes at ten each will exhaust them.
+   */
+  DB_MAX_CONNECTIONS: z.coerce.number().int().positive().default(10),
+
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+  /** Must be PRIVATE. Checked at boot rather than trusted; see SupabaseObjectStore. */
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).default('medikiosk-documents'),
   /**
    * Documents are encrypted by the application before they reach the object store, so a
    * storage administrator holds ciphertext.
@@ -171,6 +191,13 @@ export function assertProductionAdapters(env: Env): void {
       'MALWARE_SCANNER=heuristic is not antivirus and cannot run in production; ' +
         'configure a real scanner such as ClamAV',
     );
+  }
+  if (env.OBJECT_STORE_ADAPTER === 'supabase') {
+    if (!env.SUPABASE_URL)
+      problems.push('SUPABASE_URL is required when OBJECT_STORE_ADAPTER=supabase');
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+      problems.push('SUPABASE_SERVICE_ROLE_KEY is required when OBJECT_STORE_ADAPTER=supabase');
+    }
   }
   if (env.OBJECT_STORE_ADAPTER === 'local') {
     problems.push(

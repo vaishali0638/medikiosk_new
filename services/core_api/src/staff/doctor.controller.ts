@@ -13,7 +13,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { z } from 'zod';
-import { DOCTOR_FACING_DRAFT_LABEL, PROVENANCE_LABELS } from '@medikiosk/terminology';
+import { draftBannerFor, PROVENANCE_LABELS } from '@medikiosk/terminology';
 import { DomainError } from '../common/domain-error';
 import { RateLimitService } from '../security/rate-limit.service';
 import { UuidParamPipe } from '../common/uuid-param.pipe';
@@ -161,7 +161,7 @@ export class DoctorController {
       draft: draft
         ? {
             summaryId: draft.summaryId,
-            banner: DOCTOR_FACING_DRAFT_LABEL,
+            banner: draftBannerFor(draft.generator),
             provenance: draft.label,
             generator: draft.generator,
             sections: draft.draft.sections,

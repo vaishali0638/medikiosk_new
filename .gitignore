@@ -24,6 +24,8 @@ coverage/
 !.env.example
 !*.env.example
 !.env.production.example
+# Same reason: a secret-free template that documents the settings is meant to be committed.
+!.env.supabase.example
 !.env.example
 !*.env.example
 

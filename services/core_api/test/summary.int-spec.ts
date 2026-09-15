@@ -305,7 +305,10 @@ describe('patient review and safe draft (integration)', () => {
 
       expect(res.body.generator).toBe('DETERMINISTIC');
       expect(res.body.fellBackToRules).toBe(true);
-      expect(res.body.draftLabel).toBe('AI-assisted pre-consultation draft — not verified');
+      expect(res.body.generator).toBe('DETERMINISTIC');
+      expect(res.body.draftLabel).toBe(
+        "Pre-consultation draft from the patient's own answers — not verified",
+      );
     });
 
     it('always carries the unverified label, never a verified one', async () => {

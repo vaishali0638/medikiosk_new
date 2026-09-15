@@ -306,7 +306,13 @@ describe('doctor dashboard and HIS export (integration)', () => {
         .expect(200);
 
       expect(res.body.draft.provenance).toBe(PROVENANCE_LABELS.AI_ASSISTED_DRAFT);
-      expect(res.body.draft.banner).toBe('AI-assisted pre-consultation draft — not verified');
+      // Names what produced it. No model ships, so every draft here is composed by rule,
+      // and telling a clinician "AI-assisted" over their patient's own quoted answers
+      // invites distrust of the most reliable material in the record.
+      expect(res.body.draft.generator).toBe('DETERMINISTIC');
+      expect(res.body.draft.banner).toBe(
+        "Pre-consultation draft from the patient's own answers — not verified",
+      );
       expect(res.body.verified).toBe(false);
     });
   });

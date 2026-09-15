@@ -174,6 +174,33 @@ async function main() {
     );
   }
 
+  // The clinical draft. Not a model: with FEATURE_AI_SUMMARY off — the default — a
+  // deterministic composer builds it by rule from the structured answers, and that is what
+  // a clinician actually reads. Checked here because a draft that silently comes back
+  // empty, or without its provenance labels, is worse than no draft at all.
+  const draft = await call('GET', `/v1/precheckins/${pid}/draft?language=en`);
+  const sections = draft.draft?.sections ?? draft.sections ?? [];
+  if (sections.length === 0) {
+    throw new JourneyError('the clinical draft came back with no sections');
+  }
+  const serialised = JSON.stringify(draft);
+  for (const required of [
+    'NOT VERIFIED',
+    'not verified',
+    'Clinical diagnosis has not been provided',
+  ]) {
+    if (!serialised.includes(required)) {
+      throw new JourneyError(`the draft is missing its safety labelling: "${required}"`);
+    }
+  }
+  // The banner must name what produced it. No model ships, so this must not say AI.
+  if (draft.generator !== 'DETERMINISTIC' || /AI-assisted/i.test(draft.banner)) {
+    throw new JourneyError(
+      `draft mislabelled: generator=${draft.generator}, banner="${draft.banner}"`,
+    );
+  }
+  ok('clinical draft composed', `${sections.length} sections, ${draft.generator}, not verified`);
+
   const token = await call('POST', `/v1/arrival/${submitted.tokenHandle}/token`, {});
   ok('hospital token issued', `${token.tokenNumber ?? token.token ?? JSON.stringify(token)}`);
 

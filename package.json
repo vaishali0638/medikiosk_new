@@ -34,7 +34,8 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run scan:forbidden && npm test",
     "lang:coverage": "npm run lang:coverage -w @medikiosk/tools",
     "start": "bash scripts/start-stack.sh",
-    "journey": "npm run journey -w @medikiosk/e2e"
+    "journey": "npm run journey -w @medikiosk/e2e",
+    "supabase:check": "npm run supabase:check -w @medikiosk/core-api"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

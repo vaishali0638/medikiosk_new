@@ -9,6 +9,8 @@ import {
   CORRELATION_ID_HEADER,
   KIOSK_DEVICE_HEADER,
 } from '@medikiosk/api-contracts';
+import { ObjectStore } from './documents/object-store';
+import { SupabaseObjectStore } from './documents/supabase-object-store';
 import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { assertProductionAdapters, loadEnv } from './config/env';
@@ -70,8 +72,20 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, openApi));
 
+  // Refuse to serve out of a public bucket. Checked before listening, so a misconfigured
+  // deployment fails to start rather than accepting documents and putting every one of
+  // them somewhere readable by URL.
+  const objectStore = app.get(ObjectStore);
+  if (objectStore instanceof SupabaseObjectStore) {
+    await objectStore.assertBucketIsPrivate();
+  }
+
   await app.listen(env.PORT);
-  Logger.log(`core_api listening on :${env.PORT} (HIS adapter: ${env.HIS_ADAPTER})`, 'Bootstrap');
+  Logger.log(
+    `core_api listening on :${env.PORT} ` +
+      `(HIS: ${env.HIS_ADAPTER}, SMS: ${env.SMS_ADAPTER}, objects: ${objectStore.kind})`,
+    'Bootstrap',
+  );
 }
 
 void bootstrap();
