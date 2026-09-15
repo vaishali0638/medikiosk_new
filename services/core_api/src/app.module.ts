@@ -35,6 +35,12 @@ import { HealthModule } from './health/health.module';
       // Supabase runbook puts it — was silently not read. The failure is a server that
       // starts against the wrong database and says nothing.
       envFilePath: ['.env', resolve(__dirname, '../../../.env')],
+      // ...but never during tests. The suite sets what it needs explicitly in
+      // test/setup-integration.ts, and a developer's .env reaching it makes the results
+      // depend on a file that is not in the repository: the first symptom here was
+      // fourteen identity tests failing on a machine where someone had configured a real
+      // OTP secret, and passing everywhere else.
+      ignoreEnvFile: process.env['NODE_ENV'] === 'test',
       // Fail fast on a bad environment rather than surfacing it mid-journey.
       validate: (raw) => loadEnv(raw as NodeJS.ProcessEnv),
     }),

@@ -30,6 +30,12 @@ export const envSchema = z.object({
    * not a client's, and must never reach a browser or a kiosk. Nothing in this repository
    * sends it anywhere except to Supabase itself.
    */
+  /**
+   * CA bundle for a provider that signs with its own root. See `infra/certs/README.md`;
+   * the alternative is turning verification off, which leaves the connection encrypted
+   * and unauthenticated.
+   */
+  DB_CA_CERT_PATH: z.string().min(1).optional(),
   /** Overrides the TLS decision, which is otherwise made from the database host. */
   DB_SSL: z.coerce.boolean().optional(),
   /**

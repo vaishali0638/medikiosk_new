@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Global, Inject, Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
@@ -32,6 +34,28 @@ export function requiresTls(connectionString: string, override?: boolean): boole
   }
 }
 
+/**
+ * Reads a CA bundle from disk, if one is configured.
+ *
+ * A path rather than the PEM inline: certificates are long, multi-line and public, and
+ * pasting one into an environment variable is how a .env stops being readable.
+ */
+export function readCaCertificate(path?: string): string | undefined {
+  if (!path) return undefined;
+
+  // Relative to the working directory OR to the repository root. The API is started from
+  // both — `npm run start:dev -w @medikiosk/core-api` runs inside the service — and a
+  // config value that works from one directory and not the other is a trap, especially
+  // for one whose absence means an unverified connection.
+  const candidates = [resolve(path), resolve(__dirname, '../../../..', path)];
+  const found = candidates.find((candidate) => existsSync(candidate));
+
+  if (!found) {
+    throw new Error(`DB_CA_CERT_PATH points at nothing. Tried: ${candidates.join(', ')}`);
+  }
+  return readFileSync(found, 'utf8');
+}
+
 @Global()
 @Module({
   providers: [
@@ -46,6 +70,7 @@ export function requiresTls(connectionString: string, override?: boolean): boole
         return createPool({
           connectionString,
           ssl: requiresTls(connectionString, config.get('DB_SSL', { infer: true })),
+          caCertificate: readCaCertificate(config.get('DB_CA_CERT_PATH', { infer: true })),
           maxConnections: config.get('DB_MAX_CONNECTIONS', { infer: true }),
         });
       },

@@ -42,6 +42,8 @@ export async function registerEnumArrayParsers(pool: Pool): Promise<number> {
 
 export interface DbConfig {
   readonly connectionString: string;
+  /** PEM for a CA the provider signs with, when it is not a publicly trusted one. */
+  readonly caCertificate?: string | undefined;
   readonly maxConnections?: number;
   /** Fail fast rather than queue behind an unhealthy database. */
   readonly connectionTimeoutMs?: number;
@@ -55,7 +57,20 @@ export function createPool(config: DbConfig): Pool {
     connectionTimeoutMillis: config.connectionTimeoutMs ?? 5_000,
     // Sessions are short; releasing idle connections keeps the OPD-hours footprint small.
     idleTimeoutMillis: 30_000,
-    ...(config.ssl ? { ssl: { rejectUnauthorized: true } } : {}),
+    ...(config.ssl
+      ? {
+          ssl: {
+            rejectUnauthorized: true,
+            // A managed provider frequently signs with its own root, which Node does not
+            // trust — Supabase does, and the error reads "self-signed certificate in
+            // certificate chain". The usual answer to that is rejectUnauthorized: false,
+            // which does not fix it: the connection stays encrypted and stops being
+            // authenticated, so anything able to intercept the network reads every patient
+            // record on it. Trusting the one named CA keeps verification intact.
+            ...(config.caCertificate ? { ca: config.caCertificate } : {}),
+          },
+        }
+      : {}),
   });
 }
 

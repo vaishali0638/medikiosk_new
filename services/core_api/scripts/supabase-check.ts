@@ -7,6 +7,8 @@
  *
  *   npm run supabase:check -w @medikiosk/core-api
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Pool } from 'pg';
 
 const line = (ok: boolean, what: string, detail = ''): void => {
@@ -20,6 +22,14 @@ const fail = (what: string, detail: string): void => {
 };
 
 async function checkDatabase(url: string): Promise<void> {
+  // Same two-place resolution as the API; see readCaCertificate.
+  const configured = process.env['DB_CA_CERT_PATH'];
+  const caPath = configured
+    ? [resolve(configured), resolve(__dirname, '../../..', configured)].find((candidate) =>
+        existsSync(candidate),
+      )
+    : undefined;
+  if (configured && !caPath) fail('DB_CA_CERT_PATH points at nothing', configured);
   const host = new URL(url).hostname;
   const port = new URL(url).port || '5432';
 
@@ -40,7 +50,12 @@ async function checkDatabase(url: string): Promise<void> {
     connectionString: url,
     ssl:
       host.endsWith('.supabase.co') || host.endsWith('.supabase.com')
-        ? { rejectUnauthorized: true }
+        ? {
+            rejectUnauthorized: true,
+            // The same CA the API uses. Checking with a weaker setting than the real thing
+            // would make this script report a connection that does not actually work.
+            ...(caPath ? { ca: readFileSync(caPath, 'utf8') } : {}),
+          }
         : undefined,
     connectionTimeoutMillis: 10_000,
     max: 2,
@@ -88,7 +103,17 @@ async function checkDatabase(url: string): Promise<void> {
     );
     line(true, 'connection budget', `${limits[0]?.used} of ${limits[0]?.max} in use`);
   } catch (error) {
-    fail('database unreachable', error instanceof Error ? error.message : 'unknown');
+    const message = error instanceof Error ? error.message : 'unknown';
+    if (message.includes('self-signed certificate')) {
+      fail(
+        'database TLS could not be verified',
+        'Supabase signs with its own root — set DB_CA_CERT_PATH to ' +
+          'infra/certs/supabase-prod-ca-2021.crt. See infra/certs/README.md. Do not ' +
+          'disable verification.',
+      );
+    } else {
+      fail('database unreachable', message);
+    }
   } finally {
     await pool.end();
   }
@@ -137,7 +162,18 @@ async function main(): Promise<void> {
   const serviceKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
   const bucket = process.env['SUPABASE_STORAGE_BUCKET'] ?? 'medikiosk-documents';
 
-  if (!supabaseUrl || !serviceKey) {
+  // Storage only matters when documents are actually going there. Failing the whole check
+  // over an unset key, while the adapter is pointed somewhere else, would train people to
+  // ignore it.
+  const storageInUse = process.env['OBJECT_STORE_ADAPTER'] === 'supabase';
+
+  if (serviceKey?.startsWith('PASTE_')) {
+    const say = storageInUse ? fail : (w: string, d: string) => line(true, w, d);
+    say(
+      'SUPABASE_SERVICE_ROLE_KEY is still the placeholder',
+      'Project Settings → API → service_role',
+    );
+  } else if (!supabaseUrl || !serviceKey) {
     line(
       true,
       'storage not configured',
