@@ -61,16 +61,31 @@ export interface NextQuestion {
 export function nextQuestion(
   questionnaire: Questionnaire,
   answers: AnswerLookup,
+  /**
+   * Which questions the patient has answered AT ALL.
+   *
+   * Separate from `answers`, and the separation is the whole point. `answers` holds the
+   * option ids a branch condition is evaluated against; a scale, a date or free text
+   * selects no options and contributes an empty array to it. Treating that empty array as
+   * "unanswered" meant a patient who answered "How severe is the problem right now?" with
+   * a 7 was asked it again, and again, for as long as they kept answering. The interview
+   * could not be completed by anyone whose questionnaire contained one.
+   *
+   * Defaults to the questions with at least one selected option, which is right for a
+   * questionnaire of pure multiple choice and is what the branching tests rely on.
+   */
+  answeredQuestionIds?: ReadonlySet<string>,
 ): NextQuestion | null {
   const applicable = questionnaire.nodes.filter((node) =>
-    node.askWhen ? evaluate(node.askWhen, answers) : true,
+    node.askWhen ? evaluate(node.askWhen, answers, answeredQuestionIds) : true,
   );
 
-  const answeredCount = applicable.filter(
-    (node) => (answers[node.question.id]?.length ?? 0) > 0,
-  ).length;
+  const isAnswered = (id: string): boolean =>
+    answeredQuestionIds ? answeredQuestionIds.has(id) : (answers[id]?.length ?? 0) > 0;
 
-  const next = applicable.find((node) => (answers[node.question.id]?.length ?? 0) === 0);
+  const answeredCount = applicable.filter((node) => isAnswered(node.question.id)).length;
+
+  const next = applicable.find((node) => !isAnswered(node.question.id));
   if (!next) return null;
 
   return {
@@ -84,9 +99,10 @@ export function nextQuestion(
 export function applicableQuestions(
   questionnaire: Questionnaire,
   answers: AnswerLookup,
+  answeredQuestionIds?: ReadonlySet<string>,
 ): readonly Question[] {
   return questionnaire.nodes
-    .filter((node) => (node.askWhen ? evaluate(node.askWhen, answers) : true))
+    .filter((node) => (node.askWhen ? evaluate(node.askWhen, answers, answeredQuestionIds) : true))
     .map((node) => node.question);
 }
 

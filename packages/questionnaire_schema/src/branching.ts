@@ -46,21 +46,34 @@ export type AnswerLookup = Readonly<Record<string, readonly string[]>>;
  * an error. A questionnaire that references a question it never asks should not be able
  * to strand a patient mid-interview.
  */
-export function evaluate(condition: Condition, answers: AnswerLookup): boolean {
+export function evaluate(
+  condition: Condition,
+  answers: AnswerLookup,
+  /**
+   * Which questions were answered at all. See `nextQuestion` for why this cannot be
+   * derived from `answers`: an answer carrying a value rather than a selection contributes
+   * an empty array, so ANSWERED read as false for every scale, date and free-text answer —
+   * and a branch that depended on one could never be taken.
+   */
+  answeredQuestionIds?: ReadonlySet<string>,
+): boolean {
   switch (condition.kind) {
     case 'ALWAYS':
       return true;
     case 'ANSWERED':
-      return (answers[condition.questionId]?.length ?? 0) > 0;
+      return (
+        answeredQuestionIds?.has(condition.questionId) ??
+        (answers[condition.questionId]?.length ?? 0) > 0
+      );
     case 'EQUALS':
       return answers[condition.questionId]?.includes(condition.value) ?? false;
     case 'IN':
       return (answers[condition.questionId] ?? []).some((v) => condition.values.includes(v));
     case 'ALL':
-      return condition.of.every((c) => evaluate(c, answers));
+      return condition.of.every((c) => evaluate(c, answers, answeredQuestionIds));
     case 'ANY':
-      return condition.of.some((c) => evaluate(c, answers));
+      return condition.of.some((c) => evaluate(c, answers, answeredQuestionIds));
     case 'NOT':
-      return !evaluate(condition.of, answers);
+      return !evaluate(condition.of, answers, answeredQuestionIds);
   }
 }

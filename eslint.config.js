@@ -101,6 +101,19 @@ module.exports = tseslint.config(
     },
   },
   {
+    // The end-to-end journey: plain Node ESM driving the running API over HTTP. Not
+    // TypeScript, because it is a client of the deployed service rather than part of it.
+    files: ['tests/e2e/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+      },
+    },
+  },
+  {
     files: ['eslint.config.js', '**/jest.config.js', '**/jest.*.config.js'],
     languageOptions: { globals: { module: 'writable', require: 'readonly' } },
     rules: { '@typescript-eslint/no-require-imports': 'off' },

@@ -119,6 +119,18 @@ export class AnswerRepository {
     return lookup;
   }
 
+  /**
+   * Which questions the patient has answered at all, whatever form the answer took.
+   *
+   * Distinct from `lookup`, which carries only option ids because that is what branch
+   * conditions compare against. A scale, a date or free text selects no options, so it is
+   * invisible to `lookup` — and a question judged unanswered is asked again, forever.
+   */
+  async answeredQuestionIds(preCheckinId: string): Promise<ReadonlySet<string>> {
+    const answers = await this.latest(preCheckinId);
+    return new Set(answers.map((answer) => answer.questionId));
+  }
+
   /** Every revision of one question, so a reviewer can see what changed. */
   async history(preCheckinId: string, questionId: string): Promise<StoredAnswer[]> {
     const rows = await this.db

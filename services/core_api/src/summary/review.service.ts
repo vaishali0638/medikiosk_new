@@ -82,12 +82,13 @@ export class ReviewService {
     }
 
     const lookup = await this.answers.lookup(preCheckinId);
+    const answered = await this.answers.answeredQuestionIds(preCheckinId);
     const stored = await this.answers.latest(preCheckinId);
     const byId = new Map(stored.map((a) => [a.questionId, a]));
 
     // Ordered by the questionnaire, not by when the patient answered: the review screen
     // should read like the interview, not like a log.
-    const questions = this.questionnaires.applicable(composed.questionnaire, lookup);
+    const questions = this.questionnaires.applicable(composed.questionnaire, lookup, answered);
 
     const items: ReviewItem[] = [];
     const composable: ComposableAnswer[] = [];

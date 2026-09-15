@@ -42,6 +42,11 @@ interface LoadedIntake {
   /** The AYUSH module composed into the core, or null when the department has none. */
   readonly moduleUsed: string | null;
   readonly lookup: AnswerLookup;
+  /**
+   * Which questions have been answered at all — including the ones whose answer is a
+   * value rather than a selection, and which therefore do not appear in `lookup`.
+   */
+  readonly answered: ReadonlySet<string>;
 }
 
 @ApiTags('intake')
@@ -82,8 +87,12 @@ export class IntakeController {
     @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
-    const { questionnaire, lookup, moduleUsed } = await this.load(req, preCheckinId, language);
-    const next = this.questionnaires.next(questionnaire, lookup);
+    const { questionnaire, lookup, answered, moduleUsed } = await this.load(
+      req,
+      preCheckinId,
+      language,
+    );
+    const next = this.questionnaires.next(questionnaire, lookup, answered);
 
     if (!next) {
       return {
@@ -194,13 +203,13 @@ export class IntakeController {
     @Param('questionId') questionId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
-    const { questionnaire, lookup } = await this.load(req, preCheckinId, language);
+    const { questionnaire, lookup, answered } = await this.load(req, preCheckinId, language);
 
     // Served only if the question is APPLICABLE given the answers so far. A question the
     // branching has ruled out is not one the patient can be sent back to: answering it
     // would record something against a branch they are not on.
     const question = this.questionnaires
-      .applicable(questionnaire, lookup)
+      .applicable(questionnaire, lookup, answered)
       .find((candidate) => candidate.id === questionId);
 
     if (!question) {
@@ -219,29 +228,35 @@ export class IntakeController {
     @Param('preCheckinId', UuidParamPipe) preCheckinId: string,
     @Query('language') language?: string,
   ): Promise<unknown> {
-    const { questionnaire, lookup, moduleUsed } = await this.load(req, preCheckinId, language);
+    const { questionnaire, lookup, answered, moduleUsed } = await this.load(
+      req,
+      preCheckinId,
+      language,
+    );
     const answers = await this.answers.latest(preCheckinId);
     const byId = new Map(answers.map((a) => [a.questionId, a]));
 
     // Ordered by the questionnaire, not by when the patient answered: the review screen
     // should read like the interview, not like a log.
-    const items = this.questionnaires.applicable(questionnaire, lookup).map((question) => {
-      const answer = byId.get(question.id);
-      return {
-        questionId: question.id,
-        prompt: question.prompt,
-        answered: answer !== undefined,
-        selectedOptionIds: answer?.selectedOptionIds ?? [],
-        value: answer?.value ?? null,
-        // The label every answer carries into the doctor's view.
-        source: answer?.source ?? null,
-        modality: answer?.modality ?? null,
-        revision: answer?.revision ?? 0,
-        labels: (answer?.selectedOptionIds ?? []).map(
-          (id) => question.options?.find((o) => o.id === id)?.label ?? id,
-        ),
-      };
-    });
+    const items = this.questionnaires
+      .applicable(questionnaire, lookup, answered)
+      .map((question) => {
+        const answer = byId.get(question.id);
+        return {
+          questionId: question.id,
+          prompt: question.prompt,
+          answered: answer !== undefined,
+          selectedOptionIds: answer?.selectedOptionIds ?? [],
+          value: answer?.value ?? null,
+          // The label every answer carries into the doctor's view.
+          source: answer?.source ?? null,
+          modality: answer?.modality ?? null,
+          revision: answer?.revision ?? 0,
+          labels: (answer?.selectedOptionIds ?? []).map(
+            (id) => question.options?.find((o) => o.id === id)?.label ?? id,
+          ),
+        };
+      });
 
     return {
       questionnaireKey: questionnaire.key,
@@ -300,6 +315,7 @@ export class IntakeController {
       questionnaire: composed.questionnaire,
       moduleUsed: composed.moduleUsed,
       lookup: await this.answers.lookup(preCheckinId),
+      answered: await this.answers.answeredQuestionIds(preCheckinId),
     };
   }
 }

@@ -2,8 +2,9 @@
   "name": "@medikiosk/e2e",
   "version": "0.1.0",
   "private": true,
-  "description": "End-to-end journey tests: pre-check-in -> QR -> kiosk arrival -> HIS token",
+  "description": "End-to-end journey against a running stack: kiosk walk-in to hospital token",
   "scripts": {
-    "test": "echo \"e2e journey tests land in Phase 6/7\" && exit 0"
+    "test": "echo \"e2e needs a running stack: npm start, then npm run journey -w @medikiosk/e2e\" && exit 0",
+    "journey": "node journey.mjs"
   }
 }

@@ -274,3 +274,75 @@ describe('composing a module onto the core', () => {
     ).toBe('prakriti');
   });
 });
+
+/**
+ * An answer that selects no option still counts as answered.
+ *
+ * The bug this guards against made the interview impossible to finish. A NUMERIC_SCALE
+ * answer carries its content in `value` and selects nothing, so it contributed an empty
+ * array to the lookup — and an empty array read as "not answered yet". A patient who
+ * answered "how severe is it?" with a 7 was asked again, and again, for as long as they
+ * kept answering. It survived 418 integration tests because every one of them answered
+ * with options.
+ */
+describe('answers that carry a value rather than a selection', () => {
+  const valueOnly = questionnaire([
+    { question: q('severity', { type: 'NUMERIC_SCALE' }) },
+    { question: q('anythingElse', { type: 'TEXT' }) },
+  ]);
+
+  it('re-asks the question when told only about selected options', () => {
+    // The old behaviour, kept as the default and asserted so the difference is visible.
+    expect(nextQuestion(valueOnly, { severity: [] })?.question.id).toBe('severity');
+  });
+
+  it('moves on once told which questions were answered', () => {
+    const next = nextQuestion(valueOnly, { severity: [] }, new Set(['severity']));
+    expect(next?.question.id).toBe('anythingElse');
+    expect(next?.answeredCount).toBe(1);
+  });
+
+  it('terminates an interview made entirely of value answers', () => {
+    expect(
+      nextQuestion(
+        valueOnly,
+        { severity: [], anythingElse: [] },
+        new Set(['severity', 'anythingElse']),
+      ),
+    ).toBeNull();
+  });
+
+  it('lets an ANSWERED branch fire for a value answer', () => {
+    // Same root cause in a second place: ANSWERED also read the selected options, so a
+    // branch conditioned on "they answered the severity question" could never be taken by
+    // a patient who answered it with a number.
+    const gated = questionnaire([
+      { question: q('severity', { type: 'NUMERIC_SCALE' }) },
+      {
+        question: q('anythingElse', { type: 'TEXT' }),
+        askWhen: { kind: 'ANSWERED', questionId: 'severity' },
+      },
+    ]);
+
+    expect(nextQuestion(gated, { severity: [] }, new Set(['severity']))?.question.id).toBe(
+      'anythingElse',
+    );
+  });
+
+  it('still branches on selections, not on answeredness', () => {
+    // Answering a branch question with a value must not fire a branch that depends on a
+    // particular option having been chosen. That is why the two are separate arguments.
+    const branched = questionnaire([
+      { question: q('severity', { type: 'NUMERIC_SCALE' }) },
+      {
+        question: q('anythingElse', { type: 'TEXT' }),
+        askWhen: { kind: 'IN', questionId: 'severity', values: ['high'] },
+      },
+    ]);
+
+    expect(nextQuestion(branched, { severity: [] }, new Set(['severity']))).toBeNull();
+    expect(nextQuestion(branched, { severity: ['high'] }, new Set(['severity']))?.question.id).toBe(
+      'anythingElse',
+    );
+  });
+});

@@ -234,13 +234,21 @@ export class QuestionnaireService {
   }
 
   /** The next question, given the answers recorded so far. Null when the interview is done. */
-  next(questionnaire: Questionnaire, answers: AnswerLookup): NextQuestion | null {
-    return nextQuestion(questionnaire, answers);
+  next(
+    questionnaire: Questionnaire,
+    answers: AnswerLookup,
+    answeredQuestionIds: ReadonlySet<string>,
+  ): NextQuestion | null {
+    return nextQuestion(questionnaire, answers, answeredQuestionIds);
   }
 
   /** Every question that currently applies, for the review screen. */
-  applicable(questionnaire: Questionnaire, answers: AnswerLookup): readonly Question[] {
-    return applicableQuestions(questionnaire, answers);
+  applicable(
+    questionnaire: Questionnaire,
+    answers: AnswerLookup,
+    answeredQuestionIds?: ReadonlySet<string>,
+  ): readonly Question[] {
+    return applicableQuestions(questionnaire, answers, answeredQuestionIds);
   }
 
   /**
