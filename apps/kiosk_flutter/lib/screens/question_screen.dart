@@ -36,6 +36,7 @@ class QuestionScreen extends StatelessWidget {
     this.voiceAvailable = false,
     this.listening = false,
     this.pendingTranscript,
+    this.matchedOptionLabel,
     this.voiceUnavailableMessage,
     this.onStartListening,
     this.onStopListening,
@@ -71,6 +72,9 @@ class QuestionScreen extends StatelessWidget {
   /// straight into the field would make it one, silently, and "no pain" and "know pain"
   /// are one mishearing apart.
   final String? pendingTranscript;
+  /// The option the transcript was matched to, when the question has options and the
+  /// match was unambiguous. Null means the patient is told to choose on screen instead.
+  final String? matchedOptionLabel;
   final String? voiceUnavailableMessage;
   final VoidCallback? onStartListening;
   final VoidCallback? onStopListening;
@@ -115,7 +119,7 @@ class QuestionScreen extends StatelessWidget {
             const SizedBox(height: MkSpacing.lg),
           ],
 
-          if (question.isText && voiceAvailable) ...<Widget>[
+          if (voiceAvailable) ...<Widget>[
             MkButton(
               label: listening ? strings['question.listening'] : strings['question.speak'],
               icon: listening ? Icons.stop_circle_outlined : Icons.mic,
@@ -129,7 +133,7 @@ class QuestionScreen extends StatelessWidget {
 
           // The confirmation gate. Nothing the recogniser produced reaches the answer
           // until the patient has read it back and accepted it.
-          if (question.isText && pendingTranscript != null) ...<Widget>[
+          if (pendingTranscript != null) ...<Widget>[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(MkSpacing.md),
@@ -157,8 +161,24 @@ class QuestionScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: MkSpacing.sm),
+                  if (matchedOptionLabel != null) ...<Widget>[
+                    const SizedBox(height: MkSpacing.sm),
+                    // What the words will DO, not just what they were. On an option
+                    // question the consequence of confirming is a selection, and the
+                    // patient has to see which one before they agree to it.
+                    Text(
+                      '→ ${matchedOptionLabel!}',
+                      style: MkType.body.toTextStyle(
+                        color: MkColors.darkBlue,
+                        scale: a11y.textScale,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: MkSpacing.sm),
                   Text(
-                    strings['question.checkTheWords'],
+                    matchedOptionLabel == null && !question.isText
+                        ? strings['question.couldNotMatch']
+                        : strings['question.checkTheWords'],
                     style: MkType.caption.toTextStyle(
                       color: MkColors.mutedText,
                       scale: a11y.textScale,
@@ -167,14 +187,16 @@ class QuestionScreen extends StatelessWidget {
                   const SizedBox(height: MkSpacing.md),
                   Row(
                     children: <Widget>[
-                      Expanded(
-                        child: MkButton(
-                          label: strings['question.useThisText'],
-                          emphasis: MkButtonEmphasis.primary,
-                          onPressed: busy ? null : onAcceptTranscript,
+                      if (question.isText || matchedOptionLabel != null) ...<Widget>[
+                        Expanded(
+                          child: MkButton(
+                            label: strings['question.useThisText'],
+                            emphasis: MkButtonEmphasis.primary,
+                            onPressed: busy ? null : onAcceptTranscript,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: MkSpacing.md),
+                        const SizedBox(width: MkSpacing.md),
+                      ],
                       Expanded(
                         child: MkButton(
                           label: strings['question.speakAgain'],
@@ -189,7 +211,7 @@ class QuestionScreen extends StatelessWidget {
             const SizedBox(height: MkSpacing.md),
           ],
 
-          if (question.isText && voiceUnavailableMessage != null) ...<Widget>[
+          if (voiceUnavailableMessage != null) ...<Widget>[
             Text(
               voiceUnavailableMessage!,
               style: MkType.caption.toTextStyle(

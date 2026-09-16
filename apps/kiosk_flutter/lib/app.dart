@@ -21,6 +21,7 @@ import 'screens/ayush_screen.dart';
 import 'screens/consent_screen.dart';
 import 'screens/demographics_screen.dart';
 import 'screens/department_screen.dart';
+import 'screens/spoken_option_match.dart';
 import 'screens/visit_type_screen.dart';
 import 'screens/dialogs.dart';
 import 'screens/document_screens.dart';
@@ -178,6 +179,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   bool _listening = false;
   /// Awaiting the patient's confirmation. Never written into _textAnswer until they accept.
   String? _pendingTranscript;
+  QuestionOption? _matchedOption;
   String? _voiceUnavailableMessage;
   int? _scaleAnswer;
   List<AttachedDocument> _documents = const <AttachedDocument>[];
@@ -323,6 +325,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _listening = false;
     // A transcript is one patient's words. It must not survive into the next session.
     _pendingTranscript = null;
+    _matchedOption = null;
     _voiceUnavailableMessage = null;
     unawaited(widget.speech.stop());
     _documents = const <AttachedDocument>[];
@@ -995,6 +998,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         _textAnswer = null;
         _scaleAnswer = null;
         _pendingTranscript = null;
+        _matchedOption = null;
         _voiceUnavailableMessage = null;
         _view = ShellView.question;
       });
@@ -1023,6 +1027,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     setState(() {
       _listening = true;
       _pendingTranscript = null;
+      _matchedOption = null;
       _voiceUnavailableMessage = null;
     });
 
@@ -1033,6 +1038,13 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
       _listening = false;
       if (result.heard) {
         _pendingTranscript = result.transcript!.trim();
+        // On an option question the words have to become a selection. Matched here and
+        // shown to the patient before anything is selected; an ambiguous or absent match
+        // leaves them to tap, which is better than a confident wrong choice.
+        final Question? question = _question;
+        _matchedOption = question == null || question.options.isEmpty
+            ? null
+            : matchSpokenOption(_pendingTranscript!, question.options)?.option;
         return;
       }
       // Silence is not a failure: the patient may simply not have spoken. Only an actual
@@ -1054,6 +1066,22 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   void _acceptTranscript() {
     final String? heard = _pendingTranscript;
     if (heard == null) return;
+
+    final QuestionOption? matched = _matchedOption;
+    if (matched != null) {
+      // An option question: the patient has read which option their words map to and
+      // accepted it. Selected exactly as a tap would, so nothing downstream can tell the
+      // difference — except `modality: VOICE` on the stored answer, which is the point.
+      setState(() {
+        final Question? question = _question;
+        if (question != null && !question.isMultiSelect) _selectedOptionIds.clear();
+        _selectedOptionIds.add(matched.id);
+        _pendingTranscript = null;
+        _matchedOption = null;
+      });
+      return;
+    }
+
     setState(() {
       // Appended, not replaced: a patient may type part and speak the rest.
       final String existing = _textAnswer?.trim() ?? '';
@@ -1799,6 +1827,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           voiceAvailable: _voiceAvailable,
           listening: _listening,
           pendingTranscript: _pendingTranscript,
+          matchedOptionLabel: _matchedOption?.label,
           voiceUnavailableMessage: _voiceUnavailableMessage,
           onStartListening: () => unawaited(_listenForAnswer()),
           onStopListening: () => unawaited(_stopListening()),

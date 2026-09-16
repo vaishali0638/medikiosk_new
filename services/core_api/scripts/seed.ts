@@ -49,6 +49,16 @@ async function alreadyPublished(
   return existing !== undefined;
 }
 
+/** The AYUSH systems with an authored intake module. Keys match `ayushModuleKey`. */
+const AYUSH_MODULES = [
+  'ayurveda',
+  'unani',
+  'siddha',
+  'yoga-naturopathy',
+  'sowa-rigpa',
+  'homoeopathy',
+] as const;
+
 const OFFERED_LANGUAGES = [
   'en',
   'hi',
@@ -217,6 +227,54 @@ async function main(): Promise<void> {
           .execute();
       }
 
+      // The six AYUSH intake modules.
+      //
+      // Authored as DRAFTS and published only so the kiosk can compose and serve them —
+      // their semver says `-draft` and their approvals array is empty, which is what
+      // `governance/unversioned` and the readiness tool read. They hold patient-reported
+      // symptom questions only; the constitutional instruments of each system (Prakriti,
+      // Vikriti, Mizaj and their equivalents) are deliberately absent and remain
+      // AWAITING_AUTHORSHIP, because a plausible-looking version of a classification tool
+      // is worse than none.
+      for (const system of AYUSH_MODULES) {
+        const contentKey = `${system}/en`;
+        if (await alreadyPublished(trx, hospital.id, 'AYUSH_MODULE', contentKey)) continue;
+
+        const payload: unknown = JSON.parse(
+          readFileSync(
+            resolve(__dirname, `../../../infra/seed-content/ayush-module.${system}.en.json`),
+            'utf8',
+          ),
+        );
+
+        await trx
+          .insertInto('governance_version')
+          .values({
+            hospital_id: hospital.id,
+            content_kind: 'AYUSH_MODULE',
+            content_key: contentKey,
+            semver: '0.1.0-draft',
+            // DRAFT, not PUBLISHED, and the database is what decides that:
+            // `governance_version_ayush_approval` requires four approvals before an AYUSH
+            // module can go live. Writing four names nobody gave would be the one thing
+            // this whole architecture exists to prevent, so the modules land in the
+            // governance console as drafts and a practitioner of each system takes them
+            // from there. Until then the kiosk serves the common core alone, which is the
+            // correct behaviour rather than a limitation.
+            state: 'DRAFT',
+            published_by_user_id: null,
+            published_at: null,
+            payload: JSON.stringify(payload),
+            author_actor_id: 'SEED',
+            approvals: JSON.stringify([]),
+            effective_from: null,
+          })
+          .onConflict((oc) =>
+            oc.columns(['hospital_id', 'content_kind', 'content_key', 'semver']).doNothing(),
+          )
+          .execute();
+      }
+
       for (const language of OFFERED_LANGUAGES) {
         const contentKey = `consent-notice/${language}`;
         if (await alreadyPublished(trx, hospital.id, 'CONSENT_NOTICE', contentKey)) continue;
@@ -255,7 +313,8 @@ async function main(): Promise<void> {
     process.stdout.write(
       `seeded ${HOSPITAL_CODE}: 1 branch, 3 departments, ${OFFERED_LANGUAGES.length + 1} languages ` +
         `(${OFFERED_LANGUAGES.length} offerable, 1 unreviewed), 3 kiosks, ` +
-        `${OFFERED_LANGUAGES.length} placeholder consent notices, 1 placeholder questionnaire\n`,
+        `${OFFERED_LANGUAGES.length} placeholder consent notices, 1 placeholder questionnaire, ` +
+        `${AYUSH_MODULES.length} AYUSH modules awaiting clinical approval\n`,
     );
   } finally {
     await db.destroy();

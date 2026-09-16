@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../l10n/kiosk_strings.dart';
 import '../theme/accessibility_settings.dart';
@@ -102,6 +103,46 @@ class TokenScreen extends StatelessWidget {
                         style: MkType.display.toTextStyle(
                           color: MkColors.darkBlue,
                           scale: a11y.textScale * 1.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: MkSpacing.lg),
+
+                    // A real, scannable QR of the token number — not a decorative
+                    // pixel pattern. A counter that can scan it does not have to read a
+                    // number aloud across a busy OPD, and a patient who cannot read the
+                    // digits can still be served.
+                    //
+                    // It carries the token and nothing else. No patient id, no name, no
+                    // session: this code is held up in a public corridor and photographed
+                    // by whoever is standing behind them.
+                    Center(
+                      child: Semantics(
+                        // The number above is the accessible form. Announcing the QR as
+                        // well would have a screen reader read the token twice.
+                        excludeSemantics: true,
+                        child: Container(
+                          padding: const EdgeInsets.all(MkSpacing.md),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(MkRadius.sm),
+                            border: Border.all(color: MkColors.border),
+                          ),
+                          child: QrImageView(
+                            data: token,
+                            version: QrVersions.auto,
+                            // Sized so the token number, the code and the primary action
+                            // all fit above the fold on a 390x720 kiosk. Bigger read
+                            // better on a desk and pushed Print off the bottom, which is
+                            // the wrong trade on a screen a patient uses standing up.
+                            size: 140,
+                            backgroundColor: Colors.white,
+                            // Quiet zone: a scanner needs the white margin as much as the
+                            // pattern, and a QR flush against a border reads unreliably.
+                            padding: const EdgeInsets.all(MkSpacing.sm),
+                            errorStateBuilder: (BuildContext context, Object? error) =>
+                                const SizedBox.shrink(),
+                          ),
                         ),
                       ),
                     ),

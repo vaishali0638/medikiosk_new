@@ -1,0 +1,405 @@
+{
+  "_STATUS": "DRAFT — AUTHORED, NOT CLINICALLY APPROVED. NOT FOR PATIENT USE.",
+  "_whatThisIs": [
+    "Patient-reported intake questions for this AYUSH system: things the patient",
+    "observes about themselves and can answer without training. Every answer is",
+    "stored PATIENT-REPORTED and no part of this produces a diagnosis, a",
+    "classification or a remedy.",
+    "",
+    "WHAT IS DELIBERATELY ABSENT: the constitutional and diagnostic instruments of",
+    "each system — Prakriti and Vikriti in Ayurveda, Mizaj in Unani, Thegu/Nyes-pa",
+    "in Sowa-Rigpa, and their equivalents. Those are classification tools whose",
+    "output a clinician acts on, and a plausible-looking version of one is worse",
+    "than none: it reads correct to a reviewer skimming it and is wrong in ways",
+    "only a practitioner of that system can see. They remain AWAITING_AUTHORSHIP."
+  ],
+  "_beforeThisCanBePublished": [
+    "A registered practitioner OF THIS SYSTEM reviews every question here.",
+    "A second practitioner approves it — nobody approves their own work.",
+    "A translation reviewer approves each language.",
+    "A safety reviewer checks the failure modes.",
+    "Published through the governance console, which enforces all four."
+  ],
+  "key": "ayurveda",
+  "version": "0.1.0-draft",
+  "language": "en",
+  "title": "Ayurveda intake",
+  "approvedBy": [],
+  "nodes": [
+    {
+      "question": {
+        "id": "complaintOnset",
+        "type": "SINGLE_SELECT",
+        "section": "DURATION_ONSET",
+        "prompt": "When did this problem start?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "today",
+            "label": "Today"
+          },
+          {
+            "id": "thisWeek",
+            "label": "Within this week"
+          },
+          {
+            "id": "thisMonth",
+            "label": "Within this month"
+          },
+          {
+            "id": "months",
+            "label": "More than a month ago"
+          },
+          {
+            "id": "years",
+            "label": "More than a year ago"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "complaintPattern",
+        "type": "SINGLE_SELECT",
+        "section": "DURATION_ONSET",
+        "prompt": "How has it changed since it started?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "worse",
+            "label": "Getting worse"
+          },
+          {
+            "id": "same",
+            "label": "About the same"
+          },
+          {
+            "id": "better",
+            "label": "Getting better"
+          },
+          {
+            "id": "comesAndGoes",
+            "label": "Comes and goes"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "worseWhen",
+        "type": "TEXT",
+        "section": "TEXT",
+        "prompt": "Is there anything that makes it worse?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"]
+      }
+    },
+    {
+      "question": {
+        "id": "betterWhen",
+        "type": "TEXT",
+        "section": "TEXT",
+        "prompt": "Is there anything that makes it better?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"]
+      }
+    },
+    {
+      "question": {
+        "id": "appetite",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "How is your appetite?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "good",
+            "label": "Good"
+          },
+          {
+            "id": "reduced",
+            "label": "Less than usual"
+          },
+          {
+            "id": "increased",
+            "label": "More than usual"
+          },
+          {
+            "id": "irregular",
+            "label": "Irregular"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "thirst",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "How is your thirst?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "normal",
+            "label": "Normal"
+          },
+          {
+            "id": "excessive",
+            "label": "More than usual"
+          },
+          {
+            "id": "little",
+            "label": "Very little"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "digestionComfort",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "Do you get discomfort after eating?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "never",
+            "label": "Never"
+          },
+          {
+            "id": "sometimes",
+            "label": "Sometimes"
+          },
+          {
+            "id": "often",
+            "label": "Often"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "bowels",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "How are your bowels?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "regular",
+            "label": "Regular"
+          },
+          {
+            "id": "hard",
+            "label": "Hard or difficult"
+          },
+          {
+            "id": "loose",
+            "label": "Loose"
+          },
+          {
+            "id": "alternating",
+            "label": "Alternating"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "sleepQuality",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "How do you sleep?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "well",
+            "label": "Well"
+          },
+          {
+            "id": "difficultyFalling",
+            "label": "Hard to fall asleep"
+          },
+          {
+            "id": "wakeOften",
+            "label": "Wake often"
+          },
+          {
+            "id": "wakeEarly",
+            "label": "Wake too early"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "energy",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "How are your energy levels through the day?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "normal",
+            "label": "Normal"
+          },
+          {
+            "id": "tiredMornings",
+            "label": "Tired in the mornings"
+          },
+          {
+            "id": "tiredEvenings",
+            "label": "Tired by evening"
+          },
+          {
+            "id": "tiredAllDay",
+            "label": "Tired all day"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "dailyRoutine",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "Is your daily routine regular — meals and sleep at similar times?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "regular",
+            "label": "Mostly regular"
+          },
+          {
+            "id": "irregular",
+            "label": "Mostly irregular"
+          },
+          {
+            "id": "shiftWork",
+            "label": "Shift work or night work"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "physicalActivity",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "How active are you on a normal day?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "sedentary",
+            "label": "Mostly sitting"
+          },
+          {
+            "id": "moderate",
+            "label": "Some walking or activity"
+          },
+          {
+            "id": "active",
+            "label": "Physically active work or exercise"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "tobaccoAlcohol",
+        "type": "SINGLE_SELECT",
+        "section": "GENERAL_HEALTH",
+        "prompt": "Do you use tobacco or alcohol?",
+        "sensitive": true,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "neither",
+            "label": "Neither"
+          },
+          {
+            "id": "tobacco",
+            "label": "Tobacco"
+          },
+          {
+            "id": "alcohol",
+            "label": "Alcohol"
+          },
+          {
+            "id": "both",
+            "label": "Both"
+          }
+        ],
+        "sensitiveExplanation": "Tobacco and alcohol change how some treatments work and how quickly you recover. You may skip this question; it will not affect your care today."
+      }
+    },
+    {
+      "question": {
+        "id": "currentMedicines",
+        "type": "SINGLE_SELECT",
+        "section": "CURRENT_MEDICINES",
+        "prompt": "Are you taking any medicines at the moment?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "yes",
+            "label": "Yes"
+          },
+          {
+            "id": "no",
+            "label": "No"
+          }
+        ]
+      }
+    },
+    {
+      "question": {
+        "id": "currentMedicinesWhich",
+        "type": "TEXT",
+        "section": "CURRENT_MEDICINES",
+        "prompt": "Which medicines are you taking?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"]
+      }
+    },
+    {
+      "question": {
+        "id": "otherSystemTreatment",
+        "type": "SINGLE_SELECT",
+        "section": "CURRENT_MEDICINES",
+        "prompt": "Are you being treated in another system of medicine for this problem?",
+        "sensitive": false,
+        "nonCommittal": ["NOT_SURE", "PREFER_TO_DISCUSS_WITH_DOCTOR", "NOT_APPLICABLE"],
+        "options": [
+          {
+            "id": "no",
+            "label": "No"
+          },
+          {
+            "id": "allopathy",
+            "label": "Allopathy"
+          },
+          {
+            "id": "ayush",
+            "label": "Another AYUSH system"
+          },
+          {
+            "id": "homeRemedies",
+            "label": "Home remedies"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -123,6 +123,7 @@
   "question.useThisText": "Yes, use this",
   "question.speakAgain": "Say it again",
   "question.checkTheWords": "Please check the words are right before you continue. You can say it again or type instead.",
+  "question.couldNotMatch": "That did not match any of the choices. Please touch one on the screen, or say it again.",
   "question.voiceUnavailable": "Speaking is not available in this language on this kiosk. You can type your answer.",
   "question.progress": "Question",
   "ayush.title": "Select AYUSH system",

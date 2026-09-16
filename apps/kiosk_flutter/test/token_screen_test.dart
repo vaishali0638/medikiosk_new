@@ -69,7 +69,10 @@ void main() {
   testWidgets('offers printing when a printer is present', (WidgetTester tester) async {
     int printed = 0;
     await pump(tester, printerAvailable: true, onPrint: () => printed += 1);
-    await tester.tap(find.text('Print token'));
+    final Finder print = find.text('Print token');
+    await tester.ensureVisible(print);
+    await tester.pumpAndSettle();
+    await tester.tap(print);
     await tester.pumpAndSettle();
     expect(printed, 1);
   });

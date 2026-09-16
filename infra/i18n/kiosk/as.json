@@ -123,6 +123,7 @@
   "question.useThisText": "হয়, এইটোৱেই ৰাখক",
   "question.speakAgain": "পুনৰ কওক",
   "question.checkTheWords": "আগবাঢ়াৰ আগতে শব্দবোৰ শুদ্ধ হৈছে নে চাওক। আপুনি পুনৰ ক'ব পাৰে বা টাইপ কৰিব পাৰে।",
+  "question.couldNotMatch": "এইটো কোনো বিকল্পৰ সৈতে মিলা নাই। পৰ্দাত এটা স্পৰ্শ কৰক, বা পুনৰ কওক।",
   "question.voiceUnavailable": "এই কিঅ'স্কত এই ভাষাত কোৱাৰ সুবিধা নাই। আপুনি উত্তৰ টাইপ কৰিব পাৰে।",
   "question.progress": "প্ৰশ্ন",
   "ayush.title": "আয়ুষ পদ্ধতি বাছনি কৰক",
