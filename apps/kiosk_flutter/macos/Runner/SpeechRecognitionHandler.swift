@@ -43,30 +43,71 @@ class SpeechRecognitionHandler: NSObject {
   }
 
   /// A recogniser that can work without the network, or nil.
+  ///
+  /// Tries the Indian region first — voices and recognisers are both published per region,
+  /// and `ta-IN` is the right model for a patient in an Indian OPD. Where that has no
+  /// on-device model it falls back to ANOTHER REGION OF THE SAME LANGUAGE, which is a
+  /// different accent model for the language the patient actually chose, not a different
+  /// language. That distinction is the whole reason the fallback is safe: an en-IN speaker
+  /// recognised by the en-US model may get a worse transcript, and the confirmation gate
+  /// exists precisely so they read it before it becomes their answer.
+  ///
+  /// It does NOT fall back across languages, and it does not fall back to the network.
+  /// This was found on a development Mac where the only on-device models installed were
+  /// en-US, en-ID, en-PH and en-SA: asking for en-IN refused, and English voice input was
+  /// unavailable on a machine that could plainly do English.
   private func recognizer(for languageTag: String?) -> SFSpeechRecognizer? {
     guard let tag = languageTag, !tag.isEmpty else { return nil }
 
-    // Indian locales are published per region, as with the voices. Nepali is ne-NP.
     let normalised = tag.replacingOccurrences(of: "_", with: "-")
-    let identifier =
-      normalised.contains("-") ? normalised : "\(normalised)-\(normalised == "ne" ? "NP" : "IN")"
+    let language = String(normalised.split(separator: "-")[0])
+    let preferredRegion = normalised.contains("-")
+      ? String(normalised.split(separator: "-")[1])
+      : (language == "ne" ? "NP" : "IN")
 
-    guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: identifier)),
-      recognizer.isAvailable
-    else { return nil }
+    var candidates = ["\(language)-\(preferredRegion)"]
 
-    // The whole point. A recogniser that cannot work on-device is not usable here at all.
-    guard recognizer.supportsOnDeviceRecognition else { return nil }
+    // Then other regions of the same language, best acoustic match first. Alphabetical
+    // order alone picked en-ID for an Indian patient when en-GB was installed, which is a
+    // worse model for no reason. The list is a heuristic and says so; anything not named
+    // falls through to alphabetical, which is at least deterministic.
+    let betterFirst: [String: [String]] = [
+      "en": ["IN", "GB", "AU", "US"],
+      "bn": ["IN", "BD"],
+      "ta": ["IN", "SG", "MY", "LK"],
+      "ur": ["IN", "PK"],
+      "ne": ["NP", "IN"],
+    ]
+    let ranked = betterFirst[language] ?? []
+    let available = SFSpeechRecognizer.supportedLocales()
+      .map { $0.identifier.replacingOccurrences(of: "_", with: "-") }
+      .filter { $0.hasPrefix("\(language)-") && $0 != candidates[0] }
 
-    return recognizer
+    candidates += ranked.map { "\(language)-\($0)" }.filter { available.contains($0) }
+    candidates += available.filter { !candidates.contains($0) }.sorted()
+
+    for identifier in candidates {
+      guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: identifier)),
+        recognizer.isAvailable,
+        // The rule that does not bend: a recogniser needing the network is not usable here.
+        recognizer.supportsOnDeviceRecognition
+      else { continue }
+      return recognizer
+    }
+    return nil
   }
 
   private func listen(languageTag: String?, maxSeconds: Int, result: @escaping FlutterResult) {
     guard let recognizer = recognizer(for: languageTag) else {
       // Deliberately distinguished from "not supported": the hospital's remedy is to
       // install the language, and being told the wrong reason wastes a day.
-      result(["unavailable": SFSpeechRecognizer(locale: Locale(identifier: languageTag ?? ""))
-        == nil ? "languageUnavailable" : "wouldLeaveDevice"])
+      // Distinguish "we have no model for this language at all" from "we have one but it
+      // would send the audio away": the hospital's remedy differs, and being told the
+      // wrong one wastes a day.
+      let language = String((languageTag ?? "").split(separator: "-").first ?? "")
+      let anyForLanguage = SFSpeechRecognizer.supportedLocales()
+        .contains { $0.identifier.hasPrefix(language) }
+      result(["unavailable": anyForLanguage ? "wouldLeaveDevice" : "languageUnavailable"])
       return
     }
 

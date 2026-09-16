@@ -142,7 +142,13 @@ class SpeechRecognitionHandler(private val context: Context) : MethodChannel.Met
         )
     }
 
-    /** Indian locales are published per region, as with the voices. Nepali is ne-NP. */
+    /**
+     * Indian locales are published per region, as with the voices. Nepali is ne-NP.
+     *
+     * Android picks the installed model itself given a language tag, so there is no
+     * candidate list here as there is on macOS — but the preferred region still matters,
+     * because handing it `en` alone lets it choose any English model it happens to have.
+     */
     private fun localeFor(tag: String): Locale {
         val normalised = tag.replace('_', '-')
         val parts = normalised.split('-')
