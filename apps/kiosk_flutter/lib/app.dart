@@ -21,6 +21,7 @@ import 'screens/ayush_screen.dart';
 import 'screens/consent_screen.dart';
 import 'screens/demographics_screen.dart';
 import 'screens/department_screen.dart';
+import 'screens/visit_type_screen.dart';
 import 'screens/dialogs.dart';
 import 'screens/document_screens.dart';
 import 'screens/home_screen.dart';
@@ -60,6 +61,7 @@ enum ShellView {
   identityNotConfirmed,
   identityCounterOnly,
   demographics,
+  visitType,
   department,
   ayush,
   question,
@@ -163,6 +165,8 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   int? _otpAttemptsRemaining;
   String? _preCheckinId;
   DepartmentOption? _department;
+  KioskVisitType? _visitType;
+  bool _followUpAvailable = false;
   AyushSystem? _ayushSelected;
   List<AyushSystem> _ayushAvailable = const <AyushSystem>[];
   Question? _question;
@@ -305,6 +309,8 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _otpAttemptsRemaining = null;
     _preCheckinId = null;
     _department = null;
+    _visitType = null;
+    _followUpAvailable = false;
     _ayushSelected = null;
     _ayushAvailable = const <AyushSystem>[];
     _question = null;
@@ -827,7 +833,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
       );
       if (!mounted) return;
       setState(() => _busy = false);
-      _goToDepartment();
+      unawaited(_goToVisitType());
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -854,12 +860,45 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
       );
       if (!mounted) return;
       setState(() => _busy = false);
-      _goToDepartment();
+      unawaited(_goToVisitType());
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _busy = false);
       _handleApiFailure(error);
     }
+  }
+
+  /// Asks why the patient is here, then which department.
+  ///
+  /// Before the department, deliberately: the reason for the visit is a fact about the
+  /// patient, and asking it while they still have the identity screen in mind reads better
+  /// than asking after they have chosen a clinic.
+  Future<void> _goToVisitType() async {
+    // Whether a follow-up is even meaningful. The server checks this again and will
+    // downgrade a follow-up with nothing behind it, so this only decides what to offer.
+    bool available = false;
+    final SessionManager? sessions = _sessions;
+    if (sessions != null) {
+      try {
+        // Keyed on the session, not the pre-check-in — which does not exist yet, because
+        // the visit is opened after this screen. Keyed on the session rather than the
+        // patient for a second reason: a patient id in that URL would let a kiosk ask
+        // whether an arbitrary person has been treated here.
+        final Map<String, dynamic> json = await widget.api
+            .get('/v1/kiosk/sessions/${sessions.sessionId}/previous-visit');
+        available = json['hasPreviousVerifiedVisit'] as bool? ?? false;
+      } on ApiException {
+        // Not knowing is not a reason to stop. Offering nothing is the safe default: the
+        // patient can still say "a new problem", which is what the record would have said
+        // anyway before this screen existed.
+        available = false;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _followUpAvailable = available;
+      _view = ShellView.visitType;
+    });
   }
 
   /// A single department needs no choosing. Most OPD kiosks stand outside one.
@@ -881,7 +920,10 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     try {
       final Map<String, dynamic> json = await widget.api.post(
         '/v1/kiosk/sessions/${sessions.sessionId}/visit',
-        <String, dynamic>{'departmentCode': department.code},
+        <String, dynamic>{
+          'departmentCode': department.code,
+          if (_visitType != null) 'visitType': _visitType!.wire,
+        },
       );
       if (!mounted) return;
       setState(() {
@@ -1381,6 +1423,8 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
             '${_strings['identity.notConfirmed.body']}';
       case ShellView.demographics:
         return _strings['demographics.title'];
+      case ShellView.visitType:
+        return '${_strings['visitType.title']}. ${_strings['visitType.subtitle']}';
       case ShellView.department:
         return '${_strings['department.title']}. ${_strings['department.subtitle']}';
       case ShellView.ayush:
@@ -1690,6 +1734,18 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           busy: _busy,
           onSubmit: (Demographics details) => unawaited(_submitDemographics(details)),
           onBack: () => setState(() => _view = ShellView.identityMobile),
+          onExit: () => unawaited(_requestExit()),
+        );
+
+      case ShellView.visitType:
+        return VisitTypeScreen(
+          strings: _strings,
+          followUpAvailable: _followUpAvailable,
+          busy: _busy,
+          onSelect: (KioskVisitType chosen) {
+            setState(() => _visitType = chosen);
+            _goToDepartment();
+          },
           onExit: () => unawaited(_requestExit()),
         );
 

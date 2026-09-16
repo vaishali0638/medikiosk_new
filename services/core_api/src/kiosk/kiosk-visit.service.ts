@@ -4,6 +4,7 @@ import { DB } from '../db/db.module';
 import type { Db } from '../db/db.provider';
 import type { PreCheckinRow } from '../db/database.types';
 import { withSerializableRetry } from '../db/transaction';
+import type { VisitType } from '@medikiosk/api-contracts';
 import { DomainError } from '../common/domain-error';
 import { AuditRepository } from '../audit/audit.repository';
 import { ConsentService } from '../consent/consent.service';
@@ -11,6 +12,7 @@ import { KioskSessionRepository } from './kiosk-session.repository';
 import { preCheckinMachine } from '../state-machines';
 
 export interface OpenVisitInput {
+  readonly visitType?: VisitType | undefined;
   readonly sessionId: string;
   readonly departmentCode: string;
   readonly hospitalId: string;
@@ -49,6 +51,30 @@ export class KioskVisitService {
    * second one. Two visits for one person standing at one kiosk would produce two intakes
    * and, eventually, two tokens.
    */
+  /**
+   * The visit type to record, which is not always the one requested.
+   *
+   * REGULAR_FOLLOW_UP is only meaningful when there is a verified encounter to follow up
+   * from. The kiosk hides the option in that case, and this refuses it regardless: the
+   * client's view of a patient's history is a cache, and the record has to be true.
+   */
+  private async resolveVisitType(
+    patientId: string,
+    requested: VisitType | undefined,
+  ): Promise<VisitType> {
+    if (requested === undefined) return 'NEW_COMPLAINT';
+    if (requested !== 'REGULAR_FOLLOW_UP') return requested;
+
+    const previous = await this.db
+      .selectFrom('encounter')
+      .select('id')
+      .where('patient_id', '=', patientId)
+      .where('verified_at', 'is not', null)
+      .executeTakeFirst();
+
+    return previous ? 'REGULAR_FOLLOW_UP' : 'NEW_COMPLAINT';
+  }
+
   async open(input: OpenVisitInput): Promise<PreCheckinRow> {
     const session = await this.sessions.findById(input.sessionId);
     if (!session) {
@@ -64,6 +90,8 @@ export class KioskVisitService {
         'no confirmed patient on this session',
       );
     }
+
+    const patientId = session.patient_id;
 
     // Identity must already be confirmed. Opening a visit for someone the kiosk has not
     // finished identifying is how one patient's intake ends up on another's record.
@@ -117,7 +145,11 @@ export class KioskVisitService {
           branch_id: input.branchId,
           department_id: department.id,
           kiosk_session_id: input.sessionId,
-          visit_type: 'NEW_COMPLAINT',
+          // Chosen by the patient, and CHECKED here rather than trusted. A follow-up with
+          // nothing to follow up produces an empty delta and a clinician wondering what
+          // they are looking at, so a patient with no verified previous visit gets
+          // NEW_COMPLAINT whatever the client asked for.
+          visit_type: await this.resolveVisitType(patientId, input.visitType),
           // The patient is standing here. The window opens now and closes at the end of
           // the working day rather than at a fixed offset: an intake interrupted by a long
           // queue must not expire while the patient is still in the building.

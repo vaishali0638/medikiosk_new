@@ -1,3 +1,4 @@
+import { VerifiedVisitService } from '../followup/verified-visit.service';
 import { Module } from '@nestjs/common';
 import { AuditRepository } from '../audit/audit.repository';
 import { ConsentNoticeService } from '../consent/consent-notice.service';
@@ -12,6 +13,7 @@ import { ConsentModule } from '../consent/consent.module';
   imports: [ConsentModule],
   controllers: [KioskController],
   providers: [
+    VerifiedVisitService,
     KioskConfigService,
     ConsentNoticeService,
     KioskSessionRepository,

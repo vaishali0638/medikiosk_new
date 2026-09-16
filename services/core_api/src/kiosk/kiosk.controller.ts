@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  VISIT_TYPES,
   endKioskSessionRequestSchema,
   selectLanguageRequestSchema,
   type EndKioskSessionRequest,
@@ -14,11 +15,17 @@ import { KioskConfigService } from './kiosk-config.service';
 import { KioskVisitService } from './kiosk-visit.service';
 import { KioskDeviceGuard, type KioskRequest } from './kiosk-device.guard';
 import { KioskSessionRepository } from './kiosk-session.repository';
+import { VerifiedVisitService } from '../followup/verified-visit.service';
 import type { KioskSessionRow } from '../db/database.types';
 
 const openVisitSchema = z.object({
   /** The department this kiosk stands outside, or the one the AYUSH choice maps to. */
   departmentCode: z.string().min(1).max(64),
+  /**
+   * Why the patient is here. Optional, defaulting to NEW_COMPLAINT, because a client that
+   * has not been updated must keep working rather than start failing.
+   */
+  visitType: z.enum(VISIT_TYPES).optional(),
 });
 
 @ApiTags('kiosk')
@@ -28,6 +35,7 @@ export class KioskController {
   constructor(
     private readonly config: KioskConfigService,
     private readonly sessions: KioskSessionRepository,
+    private readonly verified: VerifiedVisitService,
     private readonly visits: KioskVisitService,
   ) {}
 
@@ -50,6 +58,32 @@ export class KioskController {
     return this.toResponse(row);
   }
 
+  @Get('sessions/:id/previous-visit')
+  @ApiOperation({
+    summary:
+      'Whether the patient on this session has a visit a clinician has verified. Decides ' +
+      'only whether the kiosk OFFERS a follow-up; the server checks again when the visit ' +
+      'is opened.',
+  })
+  async sessionPreviousVisit(
+    @Req() req: KioskRequest,
+    @Param('id', UuidParamPipe) id: string,
+  ): Promise<{ hasPreviousVerifiedVisit: boolean }> {
+    const session = await this.sessions.findById(id);
+
+    // Keyed on the SESSION, and answered only for a session belonging to THIS device. A patient id in this URL would turn the kiosk into a way to ask
+    // whether an arbitrary person has been treated here — which is a clinical disclosure,
+    // from an unauthenticated device in a public corridor.
+    if (!session || session.kiosk_device_id !== req.kiosk.deviceId || !session.patient_id) {
+      return { hasPreviousVerifiedVisit: false };
+    }
+
+    const previous = await this.verified.lastVerifiedFor(session.patient_id);
+    // Deliberately a bare boolean. When and where they were last seen is the follow-up
+    // screen's business, after the visit exists; here it would be disclosure for nothing.
+    return { hasPreviousVerifiedVisit: previous !== null };
+  }
+
   @Post('sessions/:id/visit')
   @ApiOperation({
     summary:
@@ -69,6 +103,7 @@ export class KioskController {
     const row = await this.visits.open({
       sessionId: id,
       departmentCode: parsed.data.departmentCode,
+      visitType: parsed.data.visitType,
       hospitalId: req.kiosk.hospitalId,
       branchId: req.kiosk.branchId,
       correlationId: req.correlationId,

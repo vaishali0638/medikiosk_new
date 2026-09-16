@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'kysely';
 import { HisAdapter } from '@medikiosk/his-adapter';
-import type { TokenResponse } from '@medikiosk/api-contracts';
+import type { TokenResponse, VisitType } from '@medikiosk/api-contracts';
 import { DB } from '../db/db.module';
 import type { Db } from '../db/db.provider';
 import type { TokenRequestRow } from '../db/database.types';
@@ -465,7 +465,7 @@ interface VisitContext {
   readonly branchCode: string;
   readonly departmentCode: string;
   readonly departmentName: string;
-  readonly visitType: 'NEW_COMPLAINT' | 'REGULAR_FOLLOW_UP';
+  readonly visitType: VisitType;
   readonly appointmentRef?: string | undefined;
   readonly uhid?: string | undefined;
 }

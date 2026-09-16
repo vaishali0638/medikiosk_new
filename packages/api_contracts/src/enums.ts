@@ -92,7 +92,16 @@ export const PATIENT_IDENTIFIER_TYPES = ['UHID', 'ABHA_NUMBER', 'ABHA_ADDRESS', 
 export type PatientIdentifierType = (typeof PATIENT_IDENTIFIER_TYPES)[number];
 
 /** Whether this visit is a first presentation or a scheduled follow-up. */
-export const VISIT_TYPES = ['NEW_COMPLAINT', 'REGULAR_FOLLOW_UP'] as const;
+/**
+ * Why the patient is here. Drives whether the clinician reads a follow-up delta or takes a
+ * history from scratch, so a wrong value here is a clinical-safety issue rather than a
+ * reporting one.
+ *
+ * REGULAR_FOLLOW_UP requires a previous verified visit — the kiosk offers it only to a
+ * patient who has one, because a follow-up with nothing to follow up produces an empty
+ * delta and a doctor wondering what they are looking at.
+ */
+export const VISIT_TYPES = ['NEW_COMPLAINT', 'REGULAR_FOLLOW_UP', 'GENERAL_CHECKUP'] as const;
 export type VisitType = (typeof VISIT_TYPES)[number];
 
 /** AYUSH systems. Only hospital-configured systems are ever offered to a patient. */

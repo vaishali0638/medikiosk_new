@@ -20,7 +20,13 @@ export interface HisTokenRequest {
   readonly departmentCode: string;
   /** The hospital's own patient identifier, when the visit has one. */
   readonly uhid?: string | undefined;
-  readonly visitType: 'NEW_COMPLAINT' | 'REGULAR_FOLLOW_UP';
+  /**
+   * Widened when GENERAL_CHECKUP was added. Spelled out rather than imported from the
+   * contracts package because this adapter is the boundary to a hospital's own system: a
+   * change to the set here is a change to what a HIS is told, and should be visible in the
+   * diff rather than arriving silently through a dependency.
+   */
+  readonly visitType: 'NEW_COMPLAINT' | 'REGULAR_FOLLOW_UP' | 'GENERAL_CHECKUP';
   readonly appointmentRef?: string | undefined;
   readonly correlationId: string;
 }

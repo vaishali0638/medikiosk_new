@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medikiosk_kiosk/app.dart';
+import 'package:medikiosk_kiosk/widgets/mk_button.dart';
 import 'package:medikiosk_kiosk/platform/audio_guidance.dart';
 import 'package:medikiosk_kiosk/platform/speech_recognition.dart';
 import 'package:medikiosk_kiosk/platform/kiosk_lock.dart';
@@ -62,6 +63,9 @@ void main() {
       status: 201,
     );
     api.onJson('/v1/kiosk/sessions/$sessionId/activity', sessionJson(), status: 201);
+    api.onJson('/v1/kiosk/sessions/$sessionId/previous-visit', <String, dynamic>{
+      'hasPreviousVerifiedVisit': false,
+    });
     api.onJson('/v1/consents/notice', <String, dynamic>{
       'version': 'v1.0',
       'language': 'en',
@@ -216,6 +220,12 @@ void main() {
     await tapText(tester, 'Female');
     await tapText(tester, 'Continue');
 
+    // Why they are here, asked before the clinic. The kiosk used to record NEW_COMPLAINT
+    // for every walk-in, which made the follow-up path unreachable and quietly mislabelled
+    // every general check-up.
+    expect(shell.view, ShellView.visitType);
+    await tapText(tester, 'A new problem');
+
     // One department needs no choosing, so the visit opens and the interview starts.
     expect(shell.view, ShellView.question);
 
@@ -300,23 +310,19 @@ void main() {
     expect(find.textContaining('R**** K****'), findsOneWidget);
 
     await tapText(tester, 'Yes, this is me');
+
+    // Why they are here comes before which clinic. The reason for the visit decides
+    // whether the doctor reads a follow-up delta or takes a history from scratch, so it is
+    // asked rather than assumed — the kiosk used to record NEW_COMPLAINT for everyone.
+    expect(shell.view, ShellView.visitType);
+    await tapText(tester, 'A new problem');
     expect(shell.view, ShellView.question);
   });
 
-  testWidgets('a wrong code says nothing about why, and offers only Exit', (
+  testWidgets('offers no follow-up to a patient with nothing to follow up', (
     WidgetTester tester,
   ) async {
     wireJourney();
-    api.onJson(
-      '/v1/identity/otp/verify',
-      <String, dynamic>{
-        'code': 'VALIDATION_FAILED',
-        'patientMessage': 'Some information could not be accepted.',
-        'correlationId': 'abc',
-      },
-      status: 400,
-    );
-
     final KioskAppState shell = await pumpApp(tester);
     await tapText(tester, 'New Registration');
     await tapText(tester, 'English');
@@ -332,58 +338,22 @@ void main() {
     }
     await tapText(tester, 'Verify');
 
-    // Still on the keypad, with the attempts the server granted.
-    //
-    // This used to assert identityNotConfirmed — one mistyped digit in a six-digit code
-    // ended the journey and sent the patient to the counter, which made the five attempts
-    // the server allows unreachable and the screen's own attempts-remaining display dead
-    // code. The reason the outcomes were collapsed still holds and is still asserted
-    // below: the kiosk must not say WHICH failure occurred, because distinguishing wrong
-    // from expired from locked is a way to probe a stolen number. Staying on the keypad
-    // discloses none of that — a wrong code and an expired one look identical — and the
-    // one case that does end the attempt, RATE_LIMITED, is the server saying the attempts
-    // are gone.
-    expect(shell.view, ShellView.identityOtp);
-    expect(find.textContaining('expired'), findsNothing);
-    expect(find.textContaining('locked'), findsNothing);
-    expect(find.textContaining('wrong'), findsNothing);
-    expect(find.text('Exit'), findsOneWidget);
-  });
-
-  testWidgets('sends the patient to the counter once the attempts are gone', (
-    WidgetTester tester,
-  ) async {
-    wireJourney();
-    api.onJson(
-      '/v1/identity/otp/verify',
-      <String, dynamic>{
-        'code': 'RATE_LIMITED',
-        'patientMessage': 'Some information could not be accepted.',
-        'correlationId': 'abc',
-      },
-      status: 429,
-    );
-
-    final KioskAppState shell = await pumpApp(tester);
-    await tapText(tester, 'New Registration');
-    await tapText(tester, 'English');
+    await tester.enterText(find.byType(TextField).first, 'Lakshmi Devi');
+    await tester.enterText(find.byType(TextField).at(1), '47');
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Female');
     await tapText(tester, 'Continue');
-    await tapText(tester, 'Agree and Continue');
-    await tapText(tester, 'Mobile OTP');
-    for (final String digit in '9876543210'.split('')) {
-      await tapText(tester, digit);
-    }
-    await tapText(tester, 'Send code');
-    for (final String digit in '123456'.split('')) {
-      await tapText(tester, digit);
-    }
-    await tapText(tester, 'Verify');
 
-    // Exhausted is the one outcome that ends the attempt, and it still says nothing about
-    // why beyond the neutral message.
-    expect(shell.view, ShellView.identityNotConfirmed);
-    expect(find.textContaining('locked'), findsNothing);
-    expect(find.text('Exit'), findsOneWidget);
+    expect(shell.view, ShellView.visitType);
+
+    // Shown and disabled rather than hidden: someone who came for exactly this would
+    // otherwise hunt for the option. The reason sits underneath, and the server refuses a
+    // follow-up with nothing behind it independently even if a client asks anyway.
+    final MkButton followUp = tester.widget<MkButton>(
+      find.widgetWithText(MkButton, 'Follow-up on an earlier visit'),
+    );
+    expect(followUp.onPressed, isNull);
+    expect(find.textContaining('once a doctor has seen you here'), findsOneWidget);
   });
 
   testWidgets('Exit opens the confirmation dialog on an ordinary screen', (

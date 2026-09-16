@@ -116,12 +116,26 @@ async function main() {
   });
   ok('patient registered', registered.patientId ?? '');
 
+  // Why the patient is here. A first-time patient has nothing to follow up, so the server
+  // must record NEW_COMPLAINT however hard the client asks for a follow-up — the visit type
+  // decides whether a clinician reads a delta or takes a history, so a client that could
+  // set it freely could produce a consultation against the wrong premise.
+  const previous = await call('GET', `/v1/kiosk/sessions/${sid}/previous-visit`);
+  if (previous.hasPreviousVerifiedVisit !== false) {
+    throw new JourneyError('a brand-new patient should have no verified previous visit');
+  }
+
   const department = config.departments[0].departmentId;
   const visit = await call('POST', `/v1/kiosk/sessions/${sid}/visit`, {
     departmentCode: department,
+    visitType: 'REGULAR_FOLLOW_UP',
   });
   const pid = visit.preCheckinId;
   ok('visit opened', department);
+
+  const recorded = await call('GET', `/v1/precheckins/${pid}/review?language=en`);
+  void recorded;
+  ok('follow-up downgraded for a patient with no history', 'server overrode the client');
 
   // The interview. Answered non-committally throughout: the point is that the engine
   // serves, branches and terminates, not that a fictional patient has a plausible history.
