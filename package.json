@@ -35,7 +35,8 @@
     "lang:coverage": "npm run lang:coverage -w @medikiosk/tools",
     "start": "bash scripts/start-stack.sh",
     "journey": "npm run journey -w @medikiosk/e2e",
-    "supabase:check": "npm run supabase:check -w @medikiosk/core-api"
+    "supabase:check": "npm run supabase:check -w @medikiosk/core-api",
+    "sms:test": "npm run sms:test -w @medikiosk/core-api --"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

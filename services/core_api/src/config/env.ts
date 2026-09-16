@@ -68,7 +68,16 @@ export const envSchema = z.object({
    */
   SMS_ADAPTER: z.enum(['sandbox', 'http', 'unconfigured']).default('sandbox'),
 
-  /** Gateway endpoint, when SMS_ADAPTER=http. */
+  /**
+   * Which gateway's dialect to speak. Each has a different request shape AND a different
+   * way of reporting failure — most return HTTP 200 with an error in the body, so the
+   * profile has to read it. `generic` is optimistic about the response and should be
+   * replaced with a named provider before a hospital relies on it.
+   */
+  SMS_PROVIDER: z.enum(['msg91', 'twilio', 'fast2sms', 'generic']).default('msg91'),
+  /** Twilio only: the account SID. */
+  SMS_ACCOUNT_SID: z.string().min(1).optional(),
+  /** Gateway endpoint. Optional for providers with a fixed one. */
   SMS_API_URL: z.string().url().optional(),
   SMS_API_KEY: z.string().min(8).optional(),
   /** `Authorization` for most gateways; `authkey` for MSG91. */
@@ -181,12 +190,18 @@ export function assertProductionAdapters(env: Env): void {
     // any of them produces a send that the gateway accepts and the operator discards,
     // which is the worst failure available: nobody is told, and the patient waits.
     for (const [name, value] of [
-      ['SMS_API_URL', env.SMS_API_URL],
       ['SMS_API_KEY', env.SMS_API_KEY],
       ['SMS_SENDER_ID', env.SMS_SENDER_ID],
       ['SMS_DLT_TEMPLATE_ID', env.SMS_DLT_TEMPLATE_ID],
     ] as const) {
       if (!value) problems.push(`${name} is required when SMS_ADAPTER=http`);
+    }
+    // Only the generic profile needs a URL; the named ones have fixed endpoints.
+    if (env.SMS_PROVIDER === 'generic' && !env.SMS_API_URL) {
+      problems.push('SMS_API_URL is required when SMS_PROVIDER=generic');
+    }
+    if (env.SMS_PROVIDER === 'twilio' && !env.SMS_ACCOUNT_SID) {
+      problems.push('SMS_ACCOUNT_SID is required when SMS_PROVIDER=twilio');
     }
   }
   if (!env.OTP_HMAC_SECRET) {

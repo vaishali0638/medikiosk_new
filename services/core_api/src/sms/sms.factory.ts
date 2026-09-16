@@ -25,10 +25,16 @@ export function buildSmsAdapter(config: ConfigService<Env, true>): SmsAdapter {
     // Production is already stopped by assertProductionAdapters. This guard covers a
     // development box set to `http` with half the settings filled in, where the useful
     // outcome is a refusal naming the gap rather than silent non-delivery.
-    if (!url || !apiKey || !senderId || !templateId) return new UnconfiguredSmsAdapter();
+    const provider = config.get('SMS_PROVIDER', { infer: true });
+    // Only `generic` needs an explicit URL; the named providers have fixed endpoints.
+    const resolvedUrl = url ?? '';
+    if (!apiKey || !senderId || !templateId) return new UnconfiguredSmsAdapter();
+    if (provider === 'generic' && !resolvedUrl) return new UnconfiguredSmsAdapter();
 
     return new HttpSmsAdapter({
-      url,
+      provider,
+      accountSid: config.get('SMS_ACCOUNT_SID', { infer: true }),
+      url: resolvedUrl,
       apiKey,
       authHeader: config.get('SMS_AUTH_HEADER', { infer: true }),
       senderId,

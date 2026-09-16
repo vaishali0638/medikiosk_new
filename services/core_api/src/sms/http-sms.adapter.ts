@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { maskTail } from '../common/redact';
+import { SMS_PROVIDERS } from './providers';
 import { SmsAdapter, type SmsMessage, type SmsSendResult } from './sms.adapter';
 
 export interface HttpSmsConfig {
+  /** Which gateway's dialect to speak. See SMS_PROVIDERS. */
+  readonly provider: string;
+  /** Twilio only: the account SID. */
+  readonly accountSid?: string | undefined;
   /** Gateway endpoint. Provider-specific; MSG91, Gupshup and Kaleyra all accept JSON POST. */
   readonly url: string;
   /** The credential. Sent in `authHeader`, never logged. */
@@ -68,25 +73,26 @@ export class HttpSmsAdapter extends SmsAdapter {
   }
 
   async send(message: SmsMessage): Promise<SmsSendResult> {
+    const profile = SMS_PROVIDERS[this.config.provider] ?? SMS_PROVIDERS['generic'];
+    if (!profile) throw new Error(`unknown SMS provider: ${this.config.provider}`);
+
+    const request = profile.buildRequest(message, {
+      url: this.config.url || (profile.defaultUrl ?? ''),
+      apiKey: this.config.apiKey,
+      senderId: this.config.senderId,
+      templateId: this.config.templateId,
+      accountSid: this.config.accountSid,
+    });
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
     try {
-      const response = await this.fetchImpl(this.config.url, {
+      const response = await this.fetchImpl(request.url, {
         method: 'POST',
         signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          [this.config.authHeader]: this.config.apiKey,
-        },
-        body: JSON.stringify({
-          // 91 is India's country code. The contract stores ten digits without it, and a
-          // gateway handed a bare ten-digit number routes it nowhere.
-          mobiles: `91${message.mobile}`,
-          sender: this.config.senderId,
-          template_id: this.config.templateId,
-          message: message.body,
-        }),
+        headers: request.headers,
+        body: request.body,
       });
 
       if (!response.ok) {
@@ -98,7 +104,21 @@ export class HttpSmsAdapter extends SmsAdapter {
         return { delivered: false };
       }
 
-      const providerRef = response.headers.get('x-message-id') ?? undefined;
+      // A 2xx is not delivery. MSG91 answers {"type":"error"} with a 200 and Fast2SMS
+      // {"return":false}; an adapter that stops at the status line reports success for a
+      // message that was never sent, and the patient waits at a kiosk for a code that is
+      // not coming. The profile reads the body and says which it was.
+      const verdict = profile.accepted(await response.text());
+      if (!verdict.ok) {
+        this.logger.error(
+          `SMS gateway accepted the request and refused the message ` +
+            `(${profile.id}: ${verdict.reason ?? 'no reason given'}) for ` +
+            `${maskTail(message.mobile)} correlationId=${message.correlationId}`,
+        );
+        return { delivered: false };
+      }
+
+      const providerRef = verdict.reference ?? response.headers.get('x-message-id') ?? undefined;
       return providerRef === undefined ? { delivered: true } : { delivered: true, providerRef };
     } catch (error) {
       // AbortError for the timeout, TypeError for DNS and connection failures. Neither

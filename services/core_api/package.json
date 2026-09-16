@@ -18,7 +18,8 @@
     "seed": "tsx scripts/seed.ts",
     "test:int": "jest --config jest.integration.config.js --runInBand",
     "smoke": "tsx scripts/smoke.ts",
-    "supabase:check": "tsx scripts/supabase-check.ts"
+    "supabase:check": "tsx scripts/supabase-check.ts",
+    "sms:test": "tsx scripts/sms-test.ts"
   },
   "dependencies": {
     "@medikiosk/api-contracts": "0.1.0",
