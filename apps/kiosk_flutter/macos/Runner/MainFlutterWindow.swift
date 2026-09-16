@@ -3,6 +3,7 @@ import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
   private var audioGuidance: AudioGuidanceHandler?
+  private var speechRecognition: SpeechRecognitionHandler?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -20,6 +21,15 @@ class MainFlutterWindow: NSWindow {
       name: AudioGuidanceHandler.channelName,
       binaryMessenger: flutterViewController.engine.binaryMessenger
     ).setMethodCallHandler { call, result in audio.handle(call, result: result) }
+
+    // Speech input. On-device only; see the handler for why it refuses rather than
+    // falling back to Apple's servers.
+    let speech = SpeechRecognitionHandler()
+    speechRecognition = speech
+    FlutterMethodChannel(
+      name: SpeechRecognitionHandler.channelName,
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    ).setMethodCallHandler { call, result in speech.handle(call, result: result) }
 
     super.awakeFromNib()
   }

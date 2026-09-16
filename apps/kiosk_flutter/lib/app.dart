@@ -11,6 +11,7 @@ import 'config/kiosk_config.dart';
 import 'l10n/indian_languages.dart';
 import 'l10n/kiosk_strings.dart';
 import 'platform/audio_guidance.dart';
+import 'platform/speech_recognition.dart';
 import 'platform/qr_scanner.dart';
 import 'platform/token_printer.dart';
 import 'platform/kiosk_lock.dart';
@@ -90,6 +91,7 @@ class KioskApp extends StatefulWidget {
     required this.api,
     required this.kioskLock,
     required this.audio,
+    required this.speech,
     required this.scanner,
     required this.printer,
     required this.wipeBuilder,
@@ -100,6 +102,7 @@ class KioskApp extends StatefulWidget {
   final ApiClient api;
   final KioskLock kioskLock;
   final AudioGuidance audio;
+  final SpeechRecognition speech;
   final QrScanner scanner;
   final TokenPrinter printer;
   final DocumentCamera documentCamera;
@@ -167,6 +170,11 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
   int _totalApplicable = 0;
   final Set<String> _selectedOptionIds = <String>{};
   String? _textAnswer;
+  bool _voiceAvailable = false;
+  bool _listening = false;
+  /// Awaiting the patient's confirmation. Never written into _textAnswer until they accept.
+  String? _pendingTranscript;
+  String? _voiceUnavailableMessage;
   int? _scaleAnswer;
   List<AttachedDocument> _documents = const <AttachedDocument>[];
   CapturedDocument? _pendingCapture;
@@ -305,6 +313,12 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
     _selectedOptionIds.clear();
     _textAnswer = null;
     _scaleAnswer = null;
+    _voiceAvailable = false;
+    _listening = false;
+    // A transcript is one patient's words. It must not survive into the next session.
+    _pendingTranscript = null;
+    _voiceUnavailableMessage = null;
+    unawaited(widget.speech.stop());
     _documents = const <AttachedDocument>[];
     // The captured image is a photograph of a patient's prescription held in memory.
     // Dropping the reference here is what keeps it out of the next patient's session.
@@ -938,13 +952,72 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         _selectedOptionIds.clear();
         _textAnswer = null;
         _scaleAnswer = null;
+        _pendingTranscript = null;
+        _voiceUnavailableMessage = null;
         _view = ShellView.question;
       });
+
+      // Asked per question rather than cached: the recogniser's answer depends on the
+      // language, and the patient can change that mid-journey.
+      final bool canSpeak = await widget.speech.isLanguageAvailable(_languageTag);
+      if (!mounted) return;
+      setState(() => _voiceAvailable = canSpeak);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _busy = false);
       _handleApiFailure(error);
     }
+  }
+
+  /// Listens, then offers what it heard for the patient to confirm.
+  ///
+  /// The transcript does NOT become the answer here. In a clinical intake the errors that
+  /// matter are small — "no pain" for "know pain", a dose, a drug name — and a machine's
+  /// guess written silently into a record the doctor later reads as the patient's own
+  /// words is the failure this whole flow exists to prevent. The patient reads it back and
+  /// accepts it, or says it again, or types instead.
+  Future<void> _listenForAnswer() async {
+    if (_listening) return;
+    setState(() {
+      _listening = true;
+      _pendingTranscript = null;
+      _voiceUnavailableMessage = null;
+    });
+
+    final TranscriptResult result = await widget.speech.listen(languageTag: _languageTag);
+    if (!mounted) return;
+
+    setState(() {
+      _listening = false;
+      if (result.heard) {
+        _pendingTranscript = result.transcript!.trim();
+        return;
+      }
+      // Silence is not a failure: the patient may simply not have spoken. Only an actual
+      // unavailability is worth saying anything about.
+      if (result.unavailable != null) {
+        _voiceUnavailableMessage = _strings['question.voiceUnavailable'];
+        _voiceAvailable = result.unavailable != SpeechUnavailableReason.notSupported &&
+            result.unavailable != SpeechUnavailableReason.wouldLeaveDevice;
+      }
+    });
+  }
+
+  Future<void> _stopListening() async {
+    await widget.speech.stop();
+    if (mounted) setState(() => _listening = false);
+  }
+
+  /// The patient has read the transcript and accepted it. Only now is it their answer.
+  void _acceptTranscript() {
+    final String? heard = _pendingTranscript;
+    if (heard == null) return;
+    setState(() {
+      // Appended, not replaced: a patient may type part and speak the rest.
+      final String existing = _textAnswer?.trim() ?? '';
+      _textAnswer = existing.isEmpty ? heard : '$existing $heard';
+      _pendingTranscript = null;
+    });
   }
 
   Future<void> _submitAnswer({List<String>? nonCommittal}) async {
@@ -1667,6 +1740,14 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           }),
           onTextChanged: (String value) => setState(() => _textAnswer = value),
           onScaleChanged: (int value) => setState(() => _scaleAnswer = value),
+          voiceAvailable: _voiceAvailable,
+          listening: _listening,
+          pendingTranscript: _pendingTranscript,
+          voiceUnavailableMessage: _voiceUnavailableMessage,
+          onStartListening: () => unawaited(_listenForAnswer()),
+          onStopListening: () => unawaited(_stopListening()),
+          onAcceptTranscript: _acceptTranscript,
+          onRejectTranscript: () => unawaited(_listenForAnswer()),
           onNonCommittal: (NonCommittal answer) =>
               unawaited(_submitAnswer(nonCommittal: <String>[answer.wire])),
           onContinue: () => unawaited(_submitAnswer()),

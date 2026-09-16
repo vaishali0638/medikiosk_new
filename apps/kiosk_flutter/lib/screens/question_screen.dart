@@ -33,6 +33,14 @@ class QuestionScreen extends StatelessWidget {
     this.scaleValue,
     this.onScaleChanged,
     this.busy = false,
+    this.voiceAvailable = false,
+    this.listening = false,
+    this.pendingTranscript,
+    this.voiceUnavailableMessage,
+    this.onStartListening,
+    this.onStopListening,
+    this.onAcceptTranscript,
+    this.onRejectTranscript,
     super.key,
   });
 
@@ -50,6 +58,24 @@ class QuestionScreen extends StatelessWidget {
   final int? scaleValue;
   final ValueChanged<int>? onScaleChanged;
   final bool busy;
+
+  /// Whether this kiosk can recognise the patient's language ON DEVICE. False hides the
+  /// control entirely rather than offering something that will fail when pressed.
+  final bool voiceAvailable;
+  final bool listening;
+
+  /// What the recogniser heard, awaiting the patient's confirmation.
+  ///
+  /// Held separately from [textValue] on purpose: a transcript is a machine's guess, and
+  /// until the patient has read it and said yes it is not their answer. Writing it
+  /// straight into the field would make it one, silently, and "no pain" and "know pain"
+  /// are one mishearing apart.
+  final String? pendingTranscript;
+  final String? voiceUnavailableMessage;
+  final VoidCallback? onStartListening;
+  final VoidCallback? onStopListening;
+  final VoidCallback? onAcceptTranscript;
+  final VoidCallback? onRejectTranscript;
 
   bool get _hasAnswer =>
       selectedOptionIds.isNotEmpty ||
@@ -87,6 +113,91 @@ class QuestionScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: MkSpacing.lg),
+          ],
+
+          if (question.isText && voiceAvailable) ...<Widget>[
+            MkButton(
+              label: listening ? strings['question.listening'] : strings['question.speak'],
+              icon: listening ? Icons.stop_circle_outlined : Icons.mic,
+              selected: listening,
+              onPressed: busy
+                  ? null
+                  : (listening ? onStopListening : onStartListening),
+            ),
+            const SizedBox(height: MkSpacing.md),
+          ],
+
+          // The confirmation gate. Nothing the recogniser produced reaches the answer
+          // until the patient has read it back and accepted it.
+          if (question.isText && pendingTranscript != null) ...<Widget>[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(MkSpacing.md),
+              decoration: BoxDecoration(
+                color: MkColors.lightOrange,
+                borderRadius: BorderRadius.circular(MkRadius.sm),
+                border: Border.all(color: MkColors.actionOrange),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    strings['question.heardYouSay'],
+                    style: MkType.body.toTextStyle(
+                      color: MkColors.neutralText,
+                      scale: a11y.textScale,
+                    ),
+                  ),
+                  const SizedBox(height: MkSpacing.sm),
+                  Text(
+                    pendingTranscript!,
+                    style: MkType.heading.toTextStyle(
+                      color: MkColors.neutralText,
+                      scale: a11y.textScale,
+                    ),
+                  ),
+                  const SizedBox(height: MkSpacing.sm),
+                  Text(
+                    strings['question.checkTheWords'],
+                    style: MkType.caption.toTextStyle(
+                      color: MkColors.mutedText,
+                      scale: a11y.textScale,
+                    ),
+                  ),
+                  const SizedBox(height: MkSpacing.md),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: MkButton(
+                          label: strings['question.useThisText'],
+                          emphasis: MkButtonEmphasis.primary,
+                          onPressed: busy ? null : onAcceptTranscript,
+                        ),
+                      ),
+                      const SizedBox(width: MkSpacing.md),
+                      Expanded(
+                        child: MkButton(
+                          label: strings['question.speakAgain'],
+                          onPressed: busy ? null : onRejectTranscript,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: MkSpacing.md),
+          ],
+
+          if (question.isText && voiceUnavailableMessage != null) ...<Widget>[
+            Text(
+              voiceUnavailableMessage!,
+              style: MkType.caption.toTextStyle(
+                color: MkColors.mutedText,
+                scale: a11y.textScale,
+              ),
+            ),
+            const SizedBox(height: MkSpacing.md),
           ],
 
           if (question.isText)

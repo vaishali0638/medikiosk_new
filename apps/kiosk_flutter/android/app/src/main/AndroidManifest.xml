@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Spoken answers, transcribed on the device by SpeechRecognitionHandler. The audio
+         never leaves the kiosk and is not retained. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <!-- Phase 6 (QR scan) and Phase 10 (document capture). Declared here so the MDM
          profile can pre-grant them; nothing in Phase 3 opens the camera. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />

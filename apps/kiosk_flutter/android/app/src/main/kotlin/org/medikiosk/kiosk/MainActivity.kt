@@ -30,6 +30,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private var audioGuidance: AudioGuidanceHandler? = null
+    private var speechRecognition: SpeechRecognitionHandler? = null
 
     private val devicePolicyManager: DevicePolicyManager
         get() = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -50,6 +51,13 @@ class MainActivity : FlutterActivity() {
         // did nothing on every device the app has ever run on.
         audioGuidance = AudioGuidanceHandler(this).also { handler ->
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AudioGuidanceHandler.CHANNEL)
+                .setMethodCallHandler(handler)
+        }
+
+        // Speech input. On-device only; the handler refuses rather than uploading a
+        // patient's voice — see its own comment.
+        speechRecognition = SpeechRecognitionHandler(this).also { handler ->
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SpeechRecognitionHandler.CHANNEL)
                 .setMethodCallHandler(handler)
         }
 
@@ -135,6 +143,8 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         audioGuidance?.dispose()
         audioGuidance = null
+        speechRecognition?.dispose()
+        speechRecognition = null
         super.onDestroy()
     }
 }

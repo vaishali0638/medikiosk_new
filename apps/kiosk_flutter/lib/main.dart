@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'api/api_client.dart';
 import 'app.dart';
 import 'platform/audio_guidance.dart';
+import 'platform/speech_recognition.dart';
 import 'platform/kiosk_lock.dart';
 import 'platform/qr_scanner.dart';
 import 'platform/token_printer.dart';
@@ -51,6 +52,12 @@ void main() {
       audio: Platform.isAndroid || Platform.isMacOS
           ? const PlatformAudioGuidance()
           : SilentAudioGuidance(),
+      // Speech input on the same two platforms, for the same reason: the kiosk runs on
+      // Android and is developed on macOS. Both recognise entirely on the device and
+      // refuse rather than sending a patient's voice to a vendor's servers.
+      speech: Platform.isAndroid || Platform.isMacOS
+          ? const PlatformSpeechRecognition()
+          : UnavailableSpeechRecognition(),
       scanner:
           Platform.isAndroid ? const PlatformQrScanner() : const UnavailableQrScanner(),
       printer: Platform.isAndroid

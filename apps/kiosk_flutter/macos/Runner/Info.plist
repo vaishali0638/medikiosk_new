@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Spoken answers are transcribed on this device so patients who cannot type can still describe their symptoms. Audio is not sent anywhere and is not kept.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Speech is recognised entirely on this device. Nothing a patient says leaves the kiosk.</string>
 </dict>
 </plist>

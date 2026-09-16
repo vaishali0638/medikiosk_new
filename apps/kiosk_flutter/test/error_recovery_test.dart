@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medikiosk_kiosk/app.dart';
 import 'package:medikiosk_kiosk/platform/audio_guidance.dart';
+import 'package:medikiosk_kiosk/platform/speech_recognition.dart';
 import 'package:medikiosk_kiosk/platform/kiosk_lock.dart';
 import 'package:medikiosk_kiosk/platform/qr_scanner.dart';
 import 'package:medikiosk_kiosk/platform/token_printer.dart';
@@ -42,6 +43,7 @@ void main() {
         api: api.build(),
         kioskLock: const UnlockedKioskLock(),
         audio: SilentAudioGuidance(),
+        speech: UnavailableSpeechRecognition(),
         scanner: const UnavailableQrScanner(),
         printer: const UnavailableTokenPrinter(),
         wipeBuilder: (List<VoidCallback> clearers) => _RecordingWipe(clearers),
