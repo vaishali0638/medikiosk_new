@@ -271,12 +271,41 @@ void main() {
       expect(find.textContaining('abc-123'), findsOneWidget);
     });
 
-    testWidgets('offers Exit only', (WidgetTester tester) async {
+    testWidgets('offers Exit only when there is nothing else to try', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         host(IdentityNotConfirmedScreen(strings: strings, onExit: () {})),
       );
       expect(find.byType(MkButton), findsOneWidget);
       expect(find.text('Exit'), findsOneWidget);
+    });
+
+    testWidgets('offers another way when one exists', (WidgetTester tester) async {
+      // Exit alone was the original behaviour and it sent a patient to the counter while
+      // they were holding a hospital card that would have worked — hardest on exactly the
+      // people a shared family phone makes ambiguous. This returns them to the same choice
+      // they had a moment ago; it does not weaken the refusal, and the message stays
+      // neutral about why.
+      var tried = 0;
+      await tester.pumpWidget(
+        host(
+          IdentityNotConfirmedScreen(
+            strings: strings,
+            onExit: () {},
+            onTryAnotherWay: () => tried += 1,
+          ),
+        ),
+      );
+
+      expect(find.text('Try a different way'), findsOneWidget);
+      await tester.tap(find.text('Try a different way'));
+      await tester.pumpAndSettle();
+      expect(tried, 1);
+
+      // Still says nothing about which check failed.
+      expect(find.textContaining('not found'), findsNothing);
+      expect(find.textContaining('two'), findsNothing);
     });
   });
 

@@ -75,6 +75,7 @@
   "identity.confirm.yes": "हो, यो म नै हुँ",
   "identity.notConfirmed.title": "हामीले तपाईंको विवरण पुष्टि गर्न सकेनौँ",
   "identity.notConfirmed.body": "कृपया काउन्टरमा सोध्नुहोस्, त्यहाँका कर्मचारीले चेक-इन गर्न सहयोग गर्नेछन्।",
+  "identity.notConfirmed.tryAnother": "अर्को तरिका प्रयास गर्नुहोस्",
   "arrival.scan.title": "मोबाइल QR बाट चेक-इन गर्नुहोस्",
   "arrival.scan.subtitle": "आफ्नो मोबाइल फोनमा MediKiosk QR कोड देखाउनुहोस्।",
   "arrival.scan.action": "QR स्क्यान गर्नुहोस्",

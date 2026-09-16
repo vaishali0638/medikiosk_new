@@ -75,6 +75,7 @@
   "identity.confirm.yes": "হয়, এইজন ময়েই",
   "identity.notConfirmed.title": "আমি আপোনাৰ তথ্য নিশ্চিত কৰিব নোৱাৰিলোঁ",
   "identity.notConfirmed.body": "অনুগ্ৰহ কৰি কাউণ্টাৰত সোধক, তাত কৰ্মচাৰীয়ে চেক-ইন কৰাত সহায় কৰিব।",
+  "identity.notConfirmed.tryAnother": "আন উপায়েৰে চেষ্টা কৰক",
   "arrival.scan.title": "মোবাইল QR ৰে চেক-ইন কৰক",
   "arrival.scan.subtitle": "আপোনাৰ মোবাইল ফোনৰ MediKiosk QR ক'ড দেখুৱাওক।",
   "arrival.scan.action": "QR স্কেন কৰক",

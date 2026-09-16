@@ -75,6 +75,7 @@
   "identity.confirm.yes": "അതെ, ഇത് ഞാൻ തന്നെ",
   "identity.notConfirmed.title": "നിങ്ങളുടെ വിവരങ്ങൾ സ്ഥിരീകരിക്കാൻ കഴിഞ്ഞില്ല",
   "identity.notConfirmed.body": "ദയവായി കൗണ്ടറിൽ ചോദിക്കുക, അവിടത്തെ ജീവനക്കാർ ചെക്ക്-ഇൻ ചെയ്യാൻ സഹായിക്കും.",
+  "identity.notConfirmed.tryAnother": "മറ്റൊരു വഴിയിൽ ശ്രമിക്കുക",
   "arrival.scan.title": "മൊബൈൽ QR ഉപയോഗിച്ച് ചെക്ക്-ഇൻ ചെയ്യുക",
   "arrival.scan.subtitle": "നിങ്ങളുടെ മൊബൈൽ ഫോണിലെ MediKiosk QR കോഡ് കാണിക്കുക.",
   "arrival.scan.action": "QR സ്കാൻ ചെയ്യുക",

@@ -447,12 +447,25 @@ class IdentityNotConfirmedScreen extends StatelessWidget {
     required this.strings,
     required this.onExit,
     this.correlationId,
+    this.onTryAnotherWay,
     super.key,
   });
 
   final KioskStrings strings;
   final VoidCallback onExit;
   final String? correlationId;
+
+  /// Back to the identity method chooser, when another method is available.
+  ///
+  /// The screen used to offer Exit alone. The message stays neutral — it must not say
+  /// whether the record was missing, ambiguous or expired — but sending a patient to the
+  /// counter while they are holding a hospital card that would work is a real cost, and
+  /// falls hardest on exactly the people a shared family phone makes ambiguous.
+  ///
+  /// This is not a way around the refusal. It returns to the same choice they had a
+  /// moment ago; each method carries its own evidence requirement and its own rate limit,
+  /// and a mobile number will still not release a record.
+  final VoidCallback? onTryAnotherWay;
 
   @override
   Widget build(BuildContext context) {
@@ -493,9 +506,22 @@ class IdentityNotConfirmedScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: MkSpacing.xl),
+                  if (onTryAnotherWay != null) ...<Widget>[
+                    MkButton(
+                      label: strings['identity.notConfirmed.tryAnother'],
+                      emphasis: MkButtonEmphasis.primary,
+                      onPressed: onTryAnotherWay,
+                    ),
+                    const SizedBox(height: MkSpacing.md),
+                  ],
                   MkButton(
                     label: strings['common.exit'],
-                    emphasis: MkButtonEmphasis.primary,
+                    // Primary only when it is the only thing to do. With a recovery path
+                    // available, Exit should not be the loudest control on a screen a
+                    // patient reached by accident.
+                    emphasis: onTryAnotherWay == null
+                        ? MkButtonEmphasis.primary
+                        : MkButtonEmphasis.quiet,
                     onPressed: onExit,
                   ),
                   if (correlationId != null) ...<Widget>[

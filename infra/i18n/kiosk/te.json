@@ -75,6 +75,7 @@
   "identity.confirm.yes": "అవును, ఇది నేనే",
   "identity.notConfirmed.title": "మీ వివరాలను మేము ధృవీకరించలేకపోయాము",
   "identity.notConfirmed.body": "దయచేసి కౌంటర్‌లో అడగండి, అక్కడి సిబ్బంది మీ చెక్-ఇన్‌కు సహాయం చేస్తారు.",
+  "identity.notConfirmed.tryAnother": "వేరే విధంగా ప్రయత్నించండి",
   "arrival.scan.title": "మొబైల్ QR తో చెక్-ఇన్ చేయండి",
   "arrival.scan.subtitle": "మీ మొబైల్ ఫోన్‌లోని MediKiosk QR కోడ్ చూపించండి.",
   "arrival.scan.action": "QR స్కాన్ చేయండి",

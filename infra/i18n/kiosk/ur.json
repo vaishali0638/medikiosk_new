@@ -75,6 +75,7 @@
   "identity.confirm.yes": "جی ہاں، یہ میں ہی ہوں",
   "identity.notConfirmed.title": "ہم آپ کی تفصیلات کی تصدیق نہیں کر سکے",
   "identity.notConfirmed.body": "براہِ کرم کاؤنٹر پر پوچھیں، وہاں عملہ آپ کے چیک اِن میں مدد کرے گا۔",
+  "identity.notConfirmed.tryAnother": "دوسرا طریقہ آزمائیں",
   "arrival.scan.title": "موبائل QR سے چیک اِن کریں",
   "arrival.scan.subtitle": "اپنے موبائل فون پر MediKiosk QR کوڈ دکھائیں۔",
   "arrival.scan.action": "QR اسکین کریں",

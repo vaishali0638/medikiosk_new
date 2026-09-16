@@ -1743,6 +1743,9 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         return IdentityNotConfirmedScreen(
           strings: _strings,
           correlationId: _lastCorrelationId,
+          // Back to the method chooser, not around the refusal: a patient refused on a
+          // shared mobile may still have the hospital card that would work.
+          onTryAnotherWay: () => setState(() => _view = ShellView.identityMethod),
           onExit: () => unawaited(_requestExit()),
         );
 

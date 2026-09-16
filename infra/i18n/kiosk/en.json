@@ -75,6 +75,7 @@
   "identity.confirm.yes": "Yes, this is me",
   "identity.notConfirmed.title": "We could not confirm your details",
   "identity.notConfirmed.body": "Please speak to the counter, where staff can help you check in.",
+  "identity.notConfirmed.tryAnother": "Try a different way",
   "arrival.scan.title": "Check in with Mobile QR",
   "arrival.scan.subtitle": "Show your MediKiosk QR code on your mobile phone.",
   "arrival.scan.action": "Scan QR",

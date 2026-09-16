@@ -227,6 +227,41 @@ async function main(): Promise<void> {
           .execute();
       }
 
+      // A demonstrable existing patient.
+      //
+      // Without one, "Existing Patient Check-in" cannot succeed at all: a mobile number is
+      // MODERATE strength and the server will not release a record on it, so the only
+      // working route is a UHID with a date of birth — and no seeded patient had either.
+      // The path looked broken when it was simply unreachable.
+      {
+        const existing = await trx
+          .insertInto('patient')
+          .values({
+            hospital_id: hospital.id,
+            full_name: 'Demo Patient',
+            date_of_birth: new Date('1978-04-12'),
+            sex: 'FEMALE',
+            mobile: '9000000001',
+            provisional: false,
+          })
+          .onConflict((oc) => oc.doNothing())
+          .returningAll()
+          .executeTakeFirst();
+
+        if (existing) {
+          await trx
+            .insertInto('patient_identifier')
+            .values({
+              patient_id: existing.id,
+              type: 'UHID',
+              value: 'UH00012345',
+              issued_by: hospital.id,
+            })
+            .onConflict((oc) => oc.doNothing())
+            .execute();
+        }
+      }
+
       // The six AYUSH intake modules.
       //
       // Authored as DRAFTS and published only so the kiosk can compose and serve them —
@@ -314,7 +349,8 @@ async function main(): Promise<void> {
       `seeded ${HOSPITAL_CODE}: 1 branch, 3 departments, ${OFFERED_LANGUAGES.length + 1} languages ` +
         `(${OFFERED_LANGUAGES.length} offerable, 1 unreviewed), 3 kiosks, ` +
         `${OFFERED_LANGUAGES.length} placeholder consent notices, 1 placeholder questionnaire, ` +
-        `${AYUSH_MODULES.length} AYUSH modules awaiting clinical approval\n`,
+        `${AYUSH_MODULES.length} AYUSH modules awaiting clinical approval, ` +
+        '1 demo patient (UHID UH00012345, born 1978-04-12)\n',
     );
   } finally {
     await db.destroy();

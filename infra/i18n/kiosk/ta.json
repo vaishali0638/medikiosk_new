@@ -75,6 +75,7 @@
   "identity.confirm.yes": "ஆம், இது நான்தான்",
   "identity.notConfirmed.title": "உங்கள் விவரங்களை உறுதிப்படுத்த முடியவில்லை",
   "identity.notConfirmed.body": "கவுண்டரில் கேளுங்கள், அங்குள்ள ஊழியர்கள் அறிக்கையிட உதவுவார்கள்.",
+  "identity.notConfirmed.tryAnother": "வேறு வழியில் முயற்சிக்கவும்",
   "arrival.scan.title": "மொபைல் QR மூலம் அறிக்கையிடுங்கள்",
   "arrival.scan.subtitle": "உங்கள் மொபைல் தொலைபேசியில் MediKiosk QR குறியீட்டைக் காட்டுங்கள்.",
   "arrival.scan.action": "QR ஐ ஸ்கேன் செய்யவும்",
