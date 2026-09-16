@@ -1003,9 +1003,16 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
         _view = ShellView.question;
       });
 
-      // Asked per question rather than cached: the recogniser's answer depends on the
-      // language, and the patient can change that mid-journey.
-      final bool canSpeak = await widget.speech.isLanguageAvailable(_languageTag);
+      // Two conditions, and both have to hold. The hospital decides whether spoken intake
+      // is offered at all — the specification is explicit that a disabled feature must not
+      // render — and the device decides whether it can recognise this language without
+      // sending the audio away.
+      //
+      // The flag was served to the kiosk and consulted by nothing, which meant a hospital
+      // that had deliberately turned voice OFF still got a Speak button on every question.
+      final bool enabled = _config?.features.voiceIntake ?? false;
+      final bool canSpeak =
+          enabled && await widget.speech.isLanguageAvailable(_languageTag);
       if (!mounted) return;
       setState(() => _voiceAvailable = canSpeak);
     } on ApiException catch (error) {
@@ -1213,6 +1220,24 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
       setState(() => _busy = false);
       _handleApiFailure(error);
     }
+  }
+
+  /// Where the patient goes after adding documents.
+  ///
+  /// Straight to review when the hospital has OCR off, and via the extraction status
+  /// screen when it is on — a patient who has just photographed three prescriptions should
+  /// be told the kiosk is reading them rather than left wondering whether it took them.
+  ///
+  /// The status screen existed and nothing ever navigated to it: `ShellView.ocrStatus` was
+  /// declared, had a widget, and was unreachable. The `ocr` flag was the same — served to
+  /// the kiosk and consulted by nothing. Each was the other's missing half.
+  Future<void> _continueFromDocuments() async {
+    final bool ocrEnabled = _config?.features.ocr ?? false;
+    if (!ocrEnabled || _documents.isEmpty) {
+      await _loadReview();
+      return;
+    }
+    setState(() => _view = ShellView.ocrStatus);
   }
 
   Future<void> _loadReview() async {
@@ -1851,7 +1876,7 @@ class KioskAppState extends State<KioskApp> with WidgetsBindingObserver {
           // Declaring "I have no documents" and continuing lead to the same next screen.
           // They differ in what the patient is saying, not in where they end up.
           onNoDocuments: () => unawaited(_loadReview()),
-          onContinue: () => unawaited(_loadReview()),
+          onContinue: () => unawaited(_continueFromDocuments()),
           onExit: () => unawaited(_requestExit()),
         );
 

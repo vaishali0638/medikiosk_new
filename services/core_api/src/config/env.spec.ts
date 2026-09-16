@@ -151,3 +151,33 @@ describe('environment configuration', () => {
     expect(() => assertProductionAdapters(env)).not.toThrow();
   });
 });
+
+describe('boolean environment variables', () => {
+  const base = {
+    DATABASE_URL: 'postgres://localhost:5432/medikiosk',
+    OTP_HMAC_SECRET: 'a'.repeat(32),
+  };
+
+  it('reads "false" as false', () => {
+    // z.coerce.boolean() is Boolean(value), and Boolean('false') is true. Every
+    // FEATURE_X=false ever written in a .env file meant ENABLED — including the ones
+    // written specifically to turn a feature off. A hospital disabling ABHA got ABHA.
+    const env = loadEnv({ ...base, FEATURE_ABHA: 'false' } as NodeJS.ProcessEnv);
+    expect(env.FEATURE_ABHA).toBe(false);
+  });
+
+  it('reads the spellings people actually write', () => {
+    for (const off of ['false', 'FALSE', '0', 'no', 'off', '']) {
+      expect(loadEnv({ ...base, FEATURE_OCR: off } as NodeJS.ProcessEnv).FEATURE_OCR).toBe(false);
+    }
+    for (const on of ['true', 'TRUE', '1', 'yes', 'on']) {
+      expect(loadEnv({ ...base, FEATURE_OCR: on } as NodeJS.ProcessEnv).FEATURE_OCR).toBe(true);
+    }
+  });
+
+  it('refuses a value it cannot read rather than guessing', () => {
+    // A typo is a typo. Defaulting it to either answer is how a feature reaches patients
+    // by accident.
+    expect(() => loadEnv({ ...base, FEATURE_RED_FLAGS: 'ture' } as NodeJS.ProcessEnv)).toThrow();
+  });
+});

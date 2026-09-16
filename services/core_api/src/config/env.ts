@@ -7,6 +7,30 @@ import { z } from 'zod';
  * rather than failing later mid-journey. No hospital id, URL, key or clinical rule
  * is ever hard-coded in source — everything a deployment varies lives here.
  */
+/**
+ * A boolean from an environment variable, read the way a person writing one means it.
+ *
+ * NOT `z.coerce.boolean()`, which is `Boolean(value)` — and `Boolean('false')` is `true`.
+ * Every `FEATURE_X=false` in every .env file this project has ever had evaluated to
+ * ENABLED, silently, including the ones written specifically to turn a feature off. A
+ * hospital disabling ABHA in its configuration would have got ABHA.
+ *
+ * Accepts the spellings people actually write, and refuses anything else rather than
+ * guessing: an unparseable value is a typo, and defaulting a typo to either answer is how
+ * a feature ends up in front of patients by accident.
+ */
+const envBoolean = z.union([z.boolean(), z.string()]).transform((value, ctx) => {
+  if (typeof value === 'boolean') return value;
+  const normalised = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalised)) return true;
+  if (['false', '0', 'no', 'off', ''].includes(normalised)) return false;
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: `expected a boolean like true/false, got "${value}"`,
+  });
+  return z.NEVER;
+});
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -37,7 +61,7 @@ export const envSchema = z.object({
    */
   DB_CA_CERT_PATH: z.string().min(1).optional(),
   /** Overrides the TLS decision, which is otherwise made from the database host. */
-  DB_SSL: z.coerce.boolean().optional(),
+  DB_SSL: envBoolean.optional(),
   /**
    * Pool size. Modest by default because managed Postgres counts connections: Supabase's
    * smaller plans allow few direct ones, and two API nodes at ten each will exhaust them.
@@ -149,11 +173,11 @@ export const envSchema = z.object({
   /** Which EMR export adapter to use. Anything else exports nothing. */
   EMR_EXPORT_ADAPTER: z.enum(['sandbox', 'none']).default('none'),
 
-  FEATURE_ABHA: z.coerce.boolean().default(false),
-  FEATURE_AI_SUMMARY: z.coerce.boolean().default(false),
-  FEATURE_OCR: z.coerce.boolean().default(false),
-  FEATURE_RED_FLAGS: z.coerce.boolean().default(false),
-  FEATURE_VOICE_INTAKE: z.coerce.boolean().default(false),
+  FEATURE_ABHA: envBoolean.default(false),
+  FEATURE_AI_SUMMARY: envBoolean.default(false),
+  FEATURE_OCR: envBoolean.default(false),
+  FEATURE_RED_FLAGS: envBoolean.default(false),
+  FEATURE_VOICE_INTAKE: envBoolean.default(false),
 });
 
 export type Env = z.infer<typeof envSchema>;

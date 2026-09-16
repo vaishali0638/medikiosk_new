@@ -111,11 +111,29 @@ async function main(): Promise<void> {
         .returningAll()
         .executeTakeFirstOrThrow();
 
-      // One AYUSH system for the pilot; the rest exist as config but stay disabled.
+      // Three enabled departments in development, so the department and AYUSH pickers are
+      // actually reachable. With one enabled department the kiosk correctly skips both
+      // screens — a single clinic needs no choosing — which made two working features look
+      // like missing ones.
+      //
+      // A real hospital enables the departments it staffs. That is the point of the flag,
+      // and MEDIKIOSK_SEED_SINGLE_DEPARTMENT=1 puts it back to one for testing the
+      // skip-the-picker path.
+      const singleDepartment = process.env['MEDIKIOSK_SEED_SINGLE_DEPARTMENT'] === '1';
       const departments = [
         { code: 'AYU-OPD', name: 'Ayurveda OPD', ayush_system: 'AYURVEDA' as const, enabled: true },
-        { code: 'UNA-OPD', name: 'Unani OPD', ayush_system: 'UNANI' as const, enabled: false },
-        { code: 'SID-OPD', name: 'Siddha OPD', ayush_system: 'SIDDHA' as const, enabled: false },
+        {
+          code: 'UNA-OPD',
+          name: 'Unani OPD',
+          ayush_system: 'UNANI' as const,
+          enabled: !singleDepartment,
+        },
+        {
+          code: 'SID-OPD',
+          name: 'Siddha OPD',
+          ayush_system: 'SIDDHA' as const,
+          enabled: !singleDepartment,
+        },
       ];
       for (const dept of departments) {
         await trx
