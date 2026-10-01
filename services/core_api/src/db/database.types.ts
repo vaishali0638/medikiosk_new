@@ -362,6 +362,12 @@ export interface TriageStatusTable {
   created_at: Generated<Date>;
 }
 
+/**
+ * Deliberately NOT in `@medikiosk/api-contracts`: no client is told, or needs to be told,
+ * which service checked the code. It is a storage detail of this table.
+ */
+export type OtpVerifier = 'LOCAL' | 'SUPABASE';
+
 export interface OtpVerificationTable {
   id: Generated<string>;
   hospital_id: string;
@@ -370,6 +376,12 @@ export interface OtpVerificationTable {
   mobile: string;
   code_hash: string;
   code_key_id: string;
+  /**
+   * Who checks the code. A LOCAL row holds an HMAC of it; a SUPABASE row holds an empty
+   * hash because this service never saw the code. A CHECK constraint keeps the two in
+   * step, so a row can never claim one and store the other.
+   */
+  verifier: Generated<OtpVerifier>;
   state: Generated<OtpState>;
   attempt_count: Generated<number>;
   max_attempts: Generated<number>;

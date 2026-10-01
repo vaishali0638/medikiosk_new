@@ -114,7 +114,7 @@ module.exports = tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js', '**/jest.config.js', '**/jest.*.config.js'],
+    files: ['eslint.config.js', '**/jest.config.js', '**/jest.*.config.js', 'postcss.config.cjs'],
     languageOptions: { globals: { module: 'writable', require: 'readonly' } },
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },

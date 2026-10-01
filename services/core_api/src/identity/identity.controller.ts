@@ -58,6 +58,7 @@ export class IdentityController {
       maskedMobile: issued.maskedMobile,
       expiresAt: issued.expiresAt.toISOString(),
       attemptsAllowed: issued.attemptsAllowed,
+      ...(issued.devCode ? { devCode: issued.devCode } : {}),
     };
   }
 

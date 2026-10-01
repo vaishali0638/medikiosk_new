@@ -70,6 +70,11 @@ export const envSchema = z.object({
 
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+  /**
+   * The PUBLIC key, and the only one the OTP transport may hold. The service-role key
+   * bypasses row-level security; the auth endpoints do not need it, so they do not get it.
+   */
+  SUPABASE_ANON_KEY: z.string().min(20).optional(),
   /** Must be PRIVATE. Checked at boot rather than trusted; see SupabaseObjectStore. */
   SUPABASE_STORAGE_BUCKET: z.string().min(1).default('medikiosk-documents'),
   /**
@@ -116,6 +121,19 @@ export const envSchema = z.object({
   SMS_DLT_TEMPLATE_ID: z.string().min(1).optional(),
   /** A patient is waiting at the kiosk; a slower gateway than this has already failed. */
   SMS_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
+
+  /**
+   * Who generates, sends and checks the one-time code.
+   *
+   * `local` keeps the whole mechanism here: the code is generated with a CSPRNG, stored as
+   * an HMAC, and sent through SMS_ADAPTER. `supabase` delegates all three to Supabase Auth
+   * and stores no hash at all.
+   *
+   * What stays ours either way: the send-rate limit, the attempt ceiling, the audit trail,
+   * and the property that the response is identical for a registered and an unregistered
+   * number. Those are the parts a hospital answers for, so they do not move.
+   */
+  OTP_PROVIDER: z.enum(['local', 'supabase']).default('local'),
 
   /** HMAC key for one-time codes. Codes are never stored in plaintext. */
   OTP_HMAC_SECRET: z.string().min(32).optional(),
@@ -204,12 +222,15 @@ export function assertProductionAdapters(env: Env): void {
   if (env.HIS_ADAPTER === 'sandbox') {
     problems.push('HIS_ADAPTER=sandbox is a development stand-in and cannot run in production');
   }
-  if (env.SMS_ADAPTER === 'sandbox') {
+  // The SMS gateway exists only to carry one-time codes. With OTP_PROVIDER=supabase
+  // nothing in this service sends a message, so requiring a configured gateway would
+  // block a correct deployment on credentials it will never use.
+  if (env.OTP_PROVIDER === 'local' && env.SMS_ADAPTER === 'sandbox') {
     problems.push(
       'SMS_ADAPTER=sandbox writes one-time codes to the log and cannot run in production',
     );
   }
-  if (env.SMS_ADAPTER === 'http') {
+  if (env.OTP_PROVIDER === 'local' && env.SMS_ADAPTER === 'http') {
     // Every one of these is required for a message to actually arrive in India. Missing
     // any of them produces a send that the gateway accepts and the operator discards,
     // which is the worst failure available: nobody is told, and the patient waits.
@@ -228,8 +249,14 @@ export function assertProductionAdapters(env: Env): void {
       problems.push('SMS_ACCOUNT_SID is required when SMS_PROVIDER=twilio');
     }
   }
-  if (!env.OTP_HMAC_SECRET) {
+  if (env.OTP_PROVIDER === 'local' && !env.OTP_HMAC_SECRET) {
     problems.push('OTP_HMAC_SECRET is required in production');
+  }
+  if (env.OTP_PROVIDER === 'supabase') {
+    if (!env.SUPABASE_URL) problems.push('SUPABASE_URL is required when OTP_PROVIDER=supabase');
+    if (!env.SUPABASE_ANON_KEY) {
+      problems.push('SUPABASE_ANON_KEY is required when OTP_PROVIDER=supabase');
+    }
   }
   if (!env.QR_SIGNING_KEY) {
     problems.push('QR_SIGNING_KEY is required in production');

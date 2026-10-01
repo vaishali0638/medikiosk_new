@@ -35,6 +35,7 @@
               "TOKEN_REQUEST_FAILED",
               "TOKEN_RECONCILIATION_REQUIRED",
               "HIS_UNAVAILABLE",
+              "OTP_SERVICE_UNAVAILABLE",
               "RATE_LIMITED",
               "SESSION_EXPIRED",
               "NOT_AUTHENTICATED",
@@ -866,7 +867,8 @@
                 "type": "string",
                 "enum": [
                   "NEW_COMPLAINT",
-                  "REGULAR_FOLLOW_UP"
+                  "REGULAR_FOLLOW_UP",
+                  "GENERAL_CHECKUP"
                 ]
               },
               "appointmentRef": {
@@ -994,7 +996,8 @@
                 "type": "string",
                 "enum": [
                   "NEW_COMPLAINT",
-                  "REGULAR_FOLLOW_UP"
+                  "REGULAR_FOLLOW_UP",
+                  "GENERAL_CHECKUP"
                 ]
               },
               "appointmentRef": {

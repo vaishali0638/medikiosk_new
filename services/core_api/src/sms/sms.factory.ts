@@ -28,7 +28,8 @@ export function buildSmsAdapter(config: ConfigService<Env, true>): SmsAdapter {
     const provider = config.get('SMS_PROVIDER', { infer: true });
     // Only `generic` needs an explicit URL; the named providers have fixed endpoints.
     const resolvedUrl = url ?? '';
-    if (!apiKey || !senderId || !templateId) return new UnconfiguredSmsAdapter();
+    const requiresTemplate = provider !== 'twilio';
+    if (!apiKey || !senderId || (requiresTemplate && !templateId)) return new UnconfiguredSmsAdapter();
     if (provider === 'generic' && !resolvedUrl) return new UnconfiguredSmsAdapter();
 
     return new HttpSmsAdapter({
@@ -38,7 +39,7 @@ export function buildSmsAdapter(config: ConfigService<Env, true>): SmsAdapter {
       apiKey,
       authHeader: config.get('SMS_AUTH_HEADER', { infer: true }),
       senderId,
-      templateId,
+      templateId: templateId ?? 'not-used',
       timeoutMs: config.get('SMS_TIMEOUT_MS', { infer: true }),
     });
   }

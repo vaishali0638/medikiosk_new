@@ -25,6 +25,8 @@ export const ERROR_CODES = [
   'TOKEN_REQUEST_FAILED',
   'TOKEN_RECONCILIATION_REQUIRED',
   'HIS_UNAVAILABLE',
+  /** The one-time-code service could not be reached. Distinct from a wrong code. */
+  'OTP_SERVICE_UNAVAILABLE',
   'RATE_LIMITED',
   'SESSION_EXPIRED',
   'NOT_AUTHENTICATED',
@@ -63,6 +65,11 @@ export const PATIENT_MESSAGES: Readonly<Record<ErrorCode, string>> = {
   TOKEN_RECONCILIATION_REQUIRED:
     'The hospital system could not be reached. Please speak to the counter.',
   HIS_UNAVAILABLE: 'The hospital system could not be reached. Please speak to the counter.',
+  // Deliberately distinct from RATE_LIMITED and from a wrong code. Telling a patient to
+  // wait and retry is wrong when the fault is ours and retrying will not help; telling
+  // them the code was wrong would be a lie that costs them their remaining attempts.
+  OTP_SERVICE_UNAVAILABLE:
+    'We could not send or check a verification code just now. Please speak to the counter.',
   RATE_LIMITED: 'Too many attempts. Please wait a moment and try again.',
   SESSION_EXPIRED: 'This session has ended. Please start again.',
   // Staff-facing, but the wording stays neutral: these codes can also be reached by an
