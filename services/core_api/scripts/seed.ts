@@ -288,6 +288,61 @@ async function main(): Promise<void> {
         }
       }
 
+      // Two development staff accounts, one per console.
+      //
+      // Without them neither console can be opened at all: sign-in answers "That sign-in
+      // was not accepted", because `staff_user` is empty and StaffAuthService refuses to
+      // auto-provision an account for a subject it has not seen — correctly, since a
+      // hospital decides who its clinicians are. But nothing created a development one,
+      // so the doctor and governance consoles both looked broken when they were only
+      // unreachable. Same failure as the demo patient above, one layer up.
+      //
+      // `sandbox:<subject>` is the development credential; see SandboxStaffIdentityProvider,
+      // which refuses to run in production. These rows are not credentials — there is no
+      // password anywhere in this table — so what they grant depends entirely on
+      // STAFF_IDP, and a production deployment authenticates against the hospital IdP.
+      //
+      // The clinician is in AYU-OPD because the worklist is scoped to the signing
+      // clinician's own department; with no department they would see an empty list and
+      // the scoping would look like a bug. The reviewer has none, governance being
+      // hospital-wide. There is no OPERATIONS row: that role gates nothing, the
+      // operations endpoints being behind OPS_API_KEY instead.
+      {
+        const ayurveda = await trx
+          .selectFrom('department')
+          .select('id')
+          .where('branch_id', '=', branch.id)
+          .where('code', '=', 'AYU-OPD')
+          .executeTakeFirstOrThrow();
+
+        const staff = [
+          {
+            subject: 'dr.demo',
+            display_name: 'Dr Demo (development)',
+            role: 'CLINICIAN' as const,
+            department_id: ayurveda.id,
+            // Obviously not a real council registration. A plausible-looking one would be
+            // worse: it is the number a clinician's own entries are attributed to.
+            registration_number: 'DEV-NOT-A-REAL-REGISTRATION',
+          },
+          {
+            subject: 'reviewer.demo',
+            display_name: 'Reviewer Demo (development)',
+            role: 'GOVERNANCE_REVIEWER' as const,
+            department_id: null,
+            registration_number: null,
+          },
+        ];
+
+        for (const member of staff) {
+          await trx
+            .insertInto('staff_user')
+            .values({ hospital_id: hospital.id, enabled: true, ...member })
+            .onConflict((oc) => oc.columns(['hospital_id', 'subject']).doNothing())
+            .execute();
+        }
+      }
+
       // The six AYUSH intake modules.
       //
       // Authored as DRAFTS and published only so the kiosk can compose and serve them —
@@ -376,7 +431,8 @@ async function main(): Promise<void> {
         `(${OFFERED_LANGUAGES.length} offerable, 1 unreviewed), 3 kiosks, ` +
         `${OFFERED_LANGUAGES.length} placeholder consent notices, 1 placeholder questionnaire, ` +
         `${AYUSH_MODULES.length} AYUSH modules awaiting clinical approval, ` +
-        '1 demo patient (UHID UH00012345, born 1978-04-12)\n',
+        '1 demo patient (UHID UH00012345, born 1978-04-12), ' +
+        '2 staff (sandbox:dr.demo, sandbox:reviewer.demo)\n',
     );
   } finally {
     await db.destroy();

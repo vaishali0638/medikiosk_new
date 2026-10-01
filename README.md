@@ -69,6 +69,13 @@ core_api. Both paths go through the same safety validator; see
 | Governance console | http://localhost:3003      |
 | AI worker          | http://localhost:8000      |
 
+The two consoles need a sign-in. The seed creates one development account for each —
+`sandbox:dr.demo` for the doctor console and `sandbox:reviewer.demo` for governance — which
+is the whole credential: `STAFF_IDP=sandbox` asserts whatever subject it is given, and
+refuses to run in production, where a real deployment redirects to the hospital's identity
+provider. The clinician is in Ayurveda OPD because the worklist shows only the signing
+clinician's own department.
+
 The kiosk is a native app and is started separately:
 
 ```bash
