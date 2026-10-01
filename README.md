@@ -27,7 +27,7 @@ apps/doctor_web        Clinician dashboard (Next.js, :3002)
 apps/governance_web    Clinical governance console (Next.js, :3003)
 services/core_api      NestJS modular monolith
 services/his_adapter   HIS/queue adapter interface + sandbox
-services/ai_worker     Python ASR/OCR/summary workers      [placeholder — Phase 10/11]
+services/ai_worker     Draft-composition worker (no OCR/ASR engine ships)
 packages/api_contracts        Shared typed contracts
 packages/design_tokens        Canonical theme (generates Dart + CSS)
 packages/questionnaire_schema Questionnaire schema, branching language and engine
@@ -52,9 +52,13 @@ npm start
 ```
 
 `npm start` brings up PostgreSQL (Compose, or a local instance if one is already
-listening), applies migrations, seeds the placeholder content, then starts the API and all
-three web consoles — waiting for each to answer before starting the next, and printing the
-URLs when they do. Ctrl-C stops everything it started.
+listening), applies migrations, seeds the placeholder content, then starts the AI worker,
+the API and all three web consoles — waiting for each to answer before starting the next,
+and printing the URLs when they do. Ctrl-C stops everything it started.
+
+The AI worker is skipped when `python3` is absent, and drafts are then composed inside
+core_api. Both paths go through the same safety validator; see
+[services/ai_worker/README.md](services/ai_worker/README.md).
 
 |                    |                            |
 | ------------------ | -------------------------- |
@@ -63,6 +67,7 @@ URLs when they do. Ctrl-C stops everything it started.
 | Patient PWA        | http://localhost:3001      |
 | Doctor console     | http://localhost:3002      |
 | Governance console | http://localhost:3003      |
+| AI worker          | http://localhost:8000      |
 
 The kiosk is a native app and is started separately:
 
@@ -83,10 +88,16 @@ Against a local PostgreSQL instead of Compose:
 
 ```bash
 createdb medikiosk_dev
-export DATABASE_URL=postgres://localhost:5432/medikiosk_dev
 npm run migrate -w @medikiosk/core-api
 npm run seed    -w @medikiosk/core-api
 npm run start:dev -w @medikiosk/core-api
+```
+
+These read `DATABASE_URL` from the `.env` at the repository root, the same file the API
+reads. Setting it in the environment still overrides the file, for one command or for CI:
+
+```bash
+DATABASE_URL=postgres://localhost:5432/medikiosk_other npm run migrate -w @medikiosk/core-api
 ```
 
 Kiosk client (Flutter 3.27+):
@@ -101,6 +112,7 @@ flutter pub get && flutter analyze && flutter test
 ```bash
 npm run verify          # format, lint, typecheck, forbidden-option scan, unit tests
 npm run scan:forbidden  # banned kiosk options, on its own
+npm run aiworker:check  # ai_worker still answers in the draft contract (needs python3)
 npm run tokens:build    # regenerate the Dart and CSS themes from the TS tokens
 npm run build -w @medikiosk/api-contracts   # regenerate docs/api/openapi.json
 
@@ -109,8 +121,9 @@ DATABASE_URL=postgres://localhost:5432/medikiosk_test \
   npm run migrate:reset -w @medikiosk/core-api && npm run test:int -w @medikiosk/core-api
 ```
 
-`npm run verify` covers neither the Flutter client nor the integration tests — run
-`flutter analyze && flutter test` and `npm run test:int` separately, as CI does.
+`npm run verify` covers neither the Flutter client, the integration tests, nor the AI
+worker — run `flutter analyze && flutter test`, `npm run test:int` and
+`npm run aiworker:check` separately, as CI does.
 
 ## Data model
 
@@ -155,7 +168,7 @@ deployment does not provide:
 | 8     | New registration and common clinical core | Complete — questionnaire is an unapproved placeholder      |
 | 9     | AYUSH modules                             | Engine complete — no approved module exists                |
 | 10    | Documents and OCR                         | Pipeline complete — no OCR engine ships                    |
-| 11    | Patient review and safe AI draft          | Safety gate complete — no generator ships                  |
+| 11    | Patient review and safe AI draft          | Complete — the generator restates answers; no model ships  |
 | 12    | Regular follow-up delta                   | Complete                                                   |
 | 13    | Doctor dashboard and HIS export           | Complete — sandbox SSO and EMR adapters                    |
 | 14    | Clinical governance console               | Complete                                                   |

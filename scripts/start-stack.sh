@@ -68,6 +68,34 @@ npm run migrate -w @medikiosk/core-api 2>&1 \
   | grep -vE "Can't determine timestamp|^$" || true
 npm run seed -w @medikiosk/core-api
 
+# ------------------------------------------------------------- the AI worker
+# Started before core_api, which reads AI_WORKER_URL at boot.
+#
+# Optional on purpose: with no worker the draft generator composes in-process, which is
+# what a deployment without an AI service does and is checked by the same safety gate. So
+# a machine without python3 loses nothing it would notice.
+say "2.5/5  ai_worker on :8000"
+AI_WORKER_PORT="${AI_WORKER_PORT:-8000}"
+if [ -n "${AI_WORKER_URL:-}" ]; then
+  echo "  using the configured AI_WORKER_URL — not starting one"
+elif command -v python3 >/dev/null; then
+  python3 services/ai_worker/server.py "$AI_WORKER_PORT" >/tmp/medikiosk-aiworker.log 2>&1 &
+  PIDS+=($!)
+  for _ in $(seq 1 30); do
+    if curl -fsS "http://localhost:${AI_WORKER_PORT}/health" >/dev/null 2>&1; then break; fi
+    sleep 0.2
+  done
+  if curl -fsS "http://localhost:${AI_WORKER_PORT}/health" >/dev/null 2>&1; then
+    export AI_WORKER_URL="http://localhost:${AI_WORKER_PORT}"
+    echo "  ok — summary drafts only; no OCR or ASR engine ships"
+  else
+    echo "  did not come up — drafts will be composed in-process"
+    tail -5 /tmp/medikiosk-aiworker.log 2>/dev/null || true
+  fi
+else
+  echo "  python3 not found — drafts will be composed in-process"
+fi
+
 # ------------------------------------------------------------------- the API
 say "3/5  core_api on :3000"
 npm run start:dev -w @medikiosk/core-api >/tmp/medikiosk-api.log 2>&1 &
@@ -109,11 +137,13 @@ cat <<EOF
   Doctor console   http://localhost:3002
   Governance       http://localhost:3003
 
+  AI worker       ${AI_WORKER_URL:-not running — drafts composed in-process}
+
   Kiosk — in another terminal:
     cd apps/kiosk_flutter && flutter run -d macos \\
       --dart-define=MEDIKIOSK_API_BASE_URL=http://localhost:3000
 
-  Logs: /tmp/medikiosk-{api,pwa,doctor,governance}.log
+  Logs: /tmp/medikiosk-{api,aiworker,pwa,doctor,governance}.log
   Ctrl-C stops everything.
 EOF
 

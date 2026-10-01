@@ -11,15 +11,16 @@
     "start:dev": "node --watch --require ts-node/register src/main.ts",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "migrate": "node-pg-migrate up -m ../../infra/migrations -j sql --migrations-table schema_migrations",
-    "migrate:down": "node-pg-migrate down -m ../../infra/migrations -j sql --migrations-table schema_migrations",
-    "migrate:redo": "node-pg-migrate down 6 -m ../../infra/migrations -j sql --migrations-table schema_migrations && node-pg-migrate up -m ../../infra/migrations -j sql --migrations-table schema_migrations",
+    "migrate": "node-pg-migrate up --envPath ../../.env -m ../../infra/migrations -j sql --migrations-table schema_migrations",
+    "migrate:down": "node-pg-migrate down --envPath ../../.env -m ../../infra/migrations -j sql --migrations-table schema_migrations",
+    "migrate:redo": "node-pg-migrate down 6 --envPath ../../.env -m ../../infra/migrations -j sql --migrations-table schema_migrations && node-pg-migrate up --envPath ../../.env -m ../../infra/migrations -j sql --migrations-table schema_migrations",
     "migrate:reset": "tsx scripts/reset-database.ts",
     "seed": "tsx scripts/seed.ts",
     "test:int": "jest --config jest.integration.config.js --runInBand",
     "smoke": "tsx scripts/smoke.ts",
     "supabase:check": "tsx scripts/supabase-check.ts",
-    "sms:test": "tsx scripts/sms-test.ts"
+    "sms:test": "tsx scripts/sms-test.ts",
+    "aiworker:check": "tsx scripts/ai-worker-check.ts"
   },
   "dependencies": {
     "@medikiosk/api-contracts": "0.1.0",

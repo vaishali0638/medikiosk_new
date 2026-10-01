@@ -7,10 +7,18 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { Client } from 'pg';
+import { loadRepoEnv } from './load-env';
 
 async function main(): Promise<void> {
+  const from = loadRepoEnv();
   const connectionString = process.env['DATABASE_URL'];
-  if (!connectionString) throw new Error('DATABASE_URL is required');
+  if (!connectionString) {
+    throw new Error(
+      from
+        ? `DATABASE_URL is required and ${from} does not set it`
+        : 'DATABASE_URL is required, and there is no .env at the repository root',
+    );
+  }
 
   if (process.env['NODE_ENV'] === 'production') {
     throw new Error('reset-database refuses to run with NODE_ENV=production');

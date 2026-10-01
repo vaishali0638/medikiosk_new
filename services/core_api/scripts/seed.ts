@@ -14,6 +14,7 @@ import { resolve } from 'node:path';
 import { Pool } from 'pg';
 import { Kysely, PostgresDialect } from 'kysely';
 import type { Database } from '../src/db/database.types';
+import { loadRepoEnv } from './load-env';
 
 /**
  * Languages this seed makes offerable: a complete shell translation AND a consent notice
@@ -79,8 +80,15 @@ const OFFERED_LANGUAGES = [
 const HOSPITAL_CODE = 'HOSP-001';
 
 async function main(): Promise<void> {
+  const from = loadRepoEnv();
   const connectionString = process.env['DATABASE_URL'];
-  if (!connectionString) throw new Error('DATABASE_URL is required');
+  if (!connectionString) {
+    throw new Error(
+      from
+        ? `DATABASE_URL is required and ${from} does not set it`
+        : 'DATABASE_URL is required, and there is no .env at the repository root',
+    );
+  }
   if (process.env['NODE_ENV'] === 'production') {
     throw new Error('seed refuses to run with NODE_ENV=production');
   }

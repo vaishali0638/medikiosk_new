@@ -39,6 +39,26 @@ jobs:
       - run: npm ci
       - run: npm run scan:forbidden
 
+  ai_worker_contract:
+    name: AI worker answers in the draft contract
+    runs-on: ubuntu-latest
+    # The worker is Python and the draft contract is TypeScript, so no compiler checks the
+    # join. A worker that drifts out of the contract does not fail loudly: core_api
+    # discards the response and composes the draft locally, for every patient, while the
+    # worker's own health check stays green. This starts the real worker and validates
+    # what it actually returns.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm run aiworker:check
+
   flutter:
     name: Flutter — analyze and test
     runs-on: ubuntu-latest

@@ -7,20 +7,12 @@
  *
  *   npm run supabase:check -w @medikiosk/core-api
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Pool } from 'pg';
+import { loadRepoEnv } from './load-env';
 
-for (const candidate of ['.env', resolve(__dirname, '../../../.env')]) {
-  if (!existsSync(candidate)) continue;
-  for (const l of readFileSync(candidate, 'utf8').split('\n')) {
-    const match = /^([A-Z0-9_]+)=(.*)$/.exec(l.trim());
-    if (match?.[1] && process.env[match[1]] === undefined) {
-      process.env[match[1]] = match[2]?.replace(/^"|"$/g, '');
-    }
-  }
-  break;
-}
+loadRepoEnv();
 
 const line = (ok: boolean, what: string, detail = ''): void => {
   process.stdout.write(`  ${ok ? '✓' : '✗'} ${what}${detail ? `  — ${detail}` : ''}\n`);

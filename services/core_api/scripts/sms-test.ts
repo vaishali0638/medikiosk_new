@@ -9,22 +9,12 @@
  *
  *   npm run sms:test -w @medikiosk/core-api -- 9876543210
  */
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { HttpSmsAdapter } from '../src/sms/http-sms.adapter';
 import { SandboxSmsAdapter } from '../src/sms/sms.adapter';
+import { loadRepoEnv } from './load-env';
 
 // The API reads .env through Nest; this script is on its own.
-for (const candidate of ['.env', resolve(__dirname, '../../../.env')]) {
-  if (!existsSync(candidate)) continue;
-  for (const line of readFileSync(candidate, 'utf8').split('\n')) {
-    const match = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim());
-    if (match?.[1] && process.env[match[1]] === undefined) {
-      process.env[match[1]] = match[2]?.replace(/^"|"$/g, '');
-    }
-  }
-  break;
-}
+loadRepoEnv();
 
 const mobile = process.argv[2];
 if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) {

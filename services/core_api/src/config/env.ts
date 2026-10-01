@@ -191,6 +191,25 @@ export const envSchema = z.object({
   /** Which EMR export adapter to use. Anything else exports nothing. */
   EMR_EXPORT_ADAPTER: z.enum(['sandbox', 'none']).default('none'),
 
+  /**
+   * Where `services/ai_worker` is listening, when one is running.
+   *
+   * Unset — the default — means the draft generator composes locally and never leaves the
+   * process. That is not a degraded mode: the local path is checked by the same safety
+   * validator and is what every deployment without an AI worker reads.
+   *
+   * Setting it does not bypass anything. The worker returns a *candidate*; it still has to
+   * parse as a draft and still has to pass the safety gate, and a response that fails
+   * either is discarded in favour of the local composition.
+   */
+  AI_WORKER_URL: z.string().url().optional(),
+  /**
+   * A patient is standing at the kiosk waiting for their token. The deterministic composer
+   * produces a complete draft instantly, so there is no version of this worth waiting on:
+   * past this, the local composition is strictly the better answer.
+   */
+  AI_WORKER_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+
   FEATURE_ABHA: envBoolean.default(false),
   FEATURE_AI_SUMMARY: envBoolean.default(false),
   FEATURE_OCR: envBoolean.default(false),

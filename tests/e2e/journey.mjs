@@ -188,10 +188,13 @@ async function main() {
     );
   }
 
-  // The clinical draft. Not a model: with FEATURE_AI_SUMMARY off — the default — a
-  // deterministic composer builds it by rule from the structured answers, and that is what
-  // a clinician actually reads. Checked here because a draft that silently comes back
-  // empty, or without its provenance labels, is worse than no draft at all.
+  // The clinical draft. Checked here because a draft that silently comes back empty, or
+  // without its provenance labels, is worse than no draft at all.
+  //
+  // Which generator produced it depends on FEATURE_AI_SUMMARY and on whether an AI worker
+  // is reachable, so this asserts neither. What it asserts is the property that has to
+  // hold however it was produced: the banner names what actually made the draft, and
+  // nothing claims to have been verified.
   const draft = await call('GET', `/v1/precheckins/${pid}/draft?language=en`);
   const sections = draft.draft?.sections ?? draft.sections ?? [];
   if (sections.length === 0) {
@@ -207,8 +210,15 @@ async function main() {
       throw new JourneyError(`the draft is missing its safety labelling: "${required}"`);
     }
   }
-  // The banner must name what produced it. No model ships, so this must not say AI.
-  if (draft.generator !== 'DETERMINISTIC' || /AI-assisted/i.test(draft.banner)) {
+  // The banner must name what produced the draft, and the two must agree. Claiming
+  // "AI-assisted" over a rule-composed draft invites a clinician to distrust their own
+  // patient's answers; omitting it when a model was involved is the more serious of the
+  // two, and is the one this catches.
+  if (draft.generator !== 'DETERMINISTIC' && draft.generator !== 'MODEL') {
+    throw new JourneyError(`draft reports an unknown generator: ${draft.generator}`);
+  }
+  const claimsAi = /AI-assisted/i.test(draft.banner ?? '');
+  if (claimsAi !== (draft.generator === 'MODEL')) {
     throw new JourneyError(
       `draft mislabelled: generator=${draft.generator}, banner="${draft.banner}"`,
     );

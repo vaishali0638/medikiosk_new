@@ -29,7 +29,8 @@ export function buildSmsAdapter(config: ConfigService<Env, true>): SmsAdapter {
     // Only `generic` needs an explicit URL; the named providers have fixed endpoints.
     const resolvedUrl = url ?? '';
     const requiresTemplate = provider !== 'twilio';
-    if (!apiKey || !senderId || (requiresTemplate && !templateId)) return new UnconfiguredSmsAdapter();
+    if (!apiKey || !senderId || (requiresTemplate && !templateId))
+      return new UnconfiguredSmsAdapter();
     if (provider === 'generic' && !resolvedUrl) return new UnconfiguredSmsAdapter();
 
     return new HttpSmsAdapter({

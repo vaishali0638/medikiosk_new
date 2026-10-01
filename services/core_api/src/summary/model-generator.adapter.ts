@@ -1,18 +1,31 @@
 import { Logger } from '@nestjs/common';
 import { NO_DIAGNOSIS_STATEMENT, PROVENANCE_LABELS } from '@medikiosk/terminology';
 import type { ComposeInput } from './deterministic-composer';
-import type { ClinicalDraft, DraftSection, DraftStatement } from './draft.contract';
+import {
+  clinicalDraftSchema,
+  type ClinicalDraft,
+  type DraftSection,
+  type DraftStatement,
+} from './draft.contract';
 import type { DraftGenerator } from './generator.adapter';
 
 /**
  * Model-backed pre-consultation draft generator.
  *
- * Calls the external Python AI worker when available and falls back to model synthesis.
- * Guaranteed to produce outputs adhering to clinical draft safety:
- *  - Strict schema compliance
+ * Calls `services/ai_worker` when one is configured, and composes the draft in-process
+ * when it is not — or when what came back cannot be trusted. Either path produces output
+ * that holds the clinical draft properties:
+ *  - Schema compliance
  *  - Grounded vocabulary
  *  - Provenance on every statement
  *  - Mandatory NO_DIAGNOSIS_STATEMENT
+ *
+ * The worker is a separate process on the hospital network, so its response is treated as
+ * untrusted input rather than as a return value: it is parsed against the draft contract
+ * before it is handed on, and a response that does not parse is dropped in favour of the
+ * local composition. The safety validator downstream is the actual authority and runs over
+ * either path regardless — this check exists so that a worker whose output has drifted
+ * shows up as one warning naming the field, instead of as a rejected draft per patient.
  */
 export class ModelDraftGenerator implements DraftGenerator {
   readonly name = 'model';
@@ -21,27 +34,49 @@ export class ModelDraftGenerator implements DraftGenerator {
 
   constructor(
     private readonly aiWorkerUrl?: string,
+    private readonly timeoutMs: number = 5_000,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
   async generate(input: ComposeInput): Promise<ClinicalDraft> {
-    if (this.aiWorkerUrl) {
-      try {
-        const res = await this.fetchImpl(`${this.aiWorkerUrl}/v1/summary/generate`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(input),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as ClinicalDraft;
-          return data;
-        }
-      } catch (err) {
-        this.logger.warn(`AI worker request failed, using local model generator: ${err}`);
-      }
-    }
+    const fromWorker = this.aiWorkerUrl ? await this.askWorker(input) : null;
+    return fromWorker ?? this.synthesizeDraft(input);
+  }
 
-    return this.synthesizeDraft(input);
+  /** Returns null for every failure, because the caller's answer is the same for all of them. */
+  private async askWorker(input: ComposeInput): Promise<ClinicalDraft | null> {
+    // A worker that never answers must not hold up a patient's token. `fetch` has no
+    // timeout of its own, so without this the request is bounded only by the TCP stack.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const res = await this.fetchImpl(`${this.aiWorkerUrl}/v1/summary/generate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        this.logger.warn(`AI worker returned HTTP ${res.status}; composing locally`);
+        return null;
+      }
+
+      const parsed = clinicalDraftSchema.safeParse(await res.json());
+      if (!parsed.success) {
+        // The failing paths, not the draft: a malformed response still describes one
+        // patient's symptoms, and what a maintainer needs is which field is wrong.
+        const where = parsed.error.issues.map((i) => i.path.join('.')).join(', ');
+        this.logger.warn(`AI worker response did not match the draft contract (${where})`);
+        return null;
+      }
+      return parsed.data;
+    } catch (err) {
+      const why = err instanceof Error ? err.message : 'unknown';
+      this.logger.warn(`AI worker unreachable (${why}); composing locally`);
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private synthesizeDraft(input: ComposeInput): ClinicalDraft {
